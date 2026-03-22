@@ -3,8 +3,8 @@
 // ==========================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbyaSbv7j6Bhu-jGGeE7ty9YgXE4YrpNw-13p6LPcbzkjNhyswLTuL5zcEni398qZGUU/exec'; 
 let currentUser = null;
-let currentYear = new Date().getFullYear(); // ใช้ปีปัจจุบัน (หรือตั้งเป็น 2026 ตามต้องการ)
-let currentMonth = new Date().getMonth() + 1; // ใช้เดือนปัจจุบัน
+let currentYear = 2026; 
+let currentMonth = 3; // 1-12
 let allUsers = [];
 let allShifts = [];
 let blockedDatesList = []; 
@@ -169,7 +169,7 @@ function renderMyBookingView(year, month) {
     gridContainer.innerHTML = html;
 }
 
-// Modal สำหรับจองเวรรายวัน / แจ้งลา
+// Modal สำหรับจองเวรรายวัน / แจ้งลา (ของตัวเอง)
 function openDailyBookingModal(dateStr, dayOfWeek) {
     const isBlocked = blockedDatesList.find(b => b.date === dateStr);
     if (isBlocked) {
@@ -184,11 +184,10 @@ function openDailyBookingModal(dateStr, dayOfWeek) {
 
     let html = `<div class="text-start mb-3">`;
 
-    // ปุ่มแจ้งไม่สะดวกรับเวร (ลา)
     if (isUnavailable) {
-        html += `<button class="btn btn-warning btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${dateStr}')">🛑 ยกเลิกการแจ้งไม่สะดวกรับเวร</button><hr>`;
+        html += `<button class="btn btn-warning btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${currentUser.uid}', '${dateStr}')">🛑 ยกเลิกการแจ้งไม่สะดวกรับเวร</button><hr>`;
     } else {
-        html += `<button class="btn btn-secondary btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${dateStr}')">⛔ แจ้งไม่สะดวกรับเวรวันนี้</button><hr>`;
+        html += `<button class="btn btn-secondary btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${currentUser.uid}', '${dateStr}')">⛔ แจ้งไม่สะดวกรับเวรวันนี้</button><hr>`;
     }
 
     html += `<p class="mb-2 fw-bold text-primary">สิทธิ์การจองเวรของคุณ:</p>`;
@@ -300,7 +299,7 @@ function renderMasterSchedule(year, month) {
     });
 }
 
-// Modal เพิ่ม/ลบเวรสำหรับตารางรวม
+// Modal เพิ่ม/ลบเวร/แจ้งลา สำหรับตารางรวม (Admin)
 function manageShiftModal(targetUser, dateStr, dayOfWeek, existingShifts) {
     const elig = checkEligibility(targetUser, dayOfWeek);
     const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
@@ -308,16 +307,20 @@ function manageShiftModal(targetUser, dateStr, dayOfWeek, existingShifts) {
     
     let html = `<div class="text-start">`;
 
+    // ปุ่มแจ้งลา / ยกเลิกการแจ้งลา
+    if (isUnavailable) {
+        html += `<div class="alert alert-warning text-center fw-bold mb-2 p-2">บุคคลนี้แจ้งไม่สะดวกรับเวรในวันนี้</div>`;
+        html += `<button class="btn btn-warning btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${targetUser.uid}', '${dateStr}')">🛑 ยกเลิกสถานะ 'ลา/ไม่สะดวกรับเวร'</button><hr>`;
+    } else {
+        html += `<button class="btn btn-secondary btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${targetUser.uid}', '${dateStr}')">⛔ กำหนดให้เป็นวันลา / ไม่สะดวกรับเวร</button><hr>`;
+    }
+
     if (existingShifts.length > 0) {
         html += `<p class="fw-bold text-danger mb-2">เวรที่จัดไว้แล้ว (คลิกเพื่อยกเลิก):</p>`;
         existingShifts.forEach(s => {
             html += `<button class="btn btn-outline-danger btn-sm w-100 mb-2" onclick="Swal.close(); deleteShiftBooking('${s.shiftId}')">🗑️ ยกเลิกเวร ${s.period} สาย ${s.line}</button>`;
         });
         html += `<hr>`;
-    }
-
-    if (isUnavailable) {
-        html += `<div class="alert alert-warning text-center fw-bold">บุคคลนี้แจ้งไม่สะดวกรับเวรในวันนี้</div>`;
     }
 
     const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
@@ -455,10 +458,10 @@ async function deleteShiftBooking(shiftId) {
     });
 }
 
-async function toggleUnavail(dateStr) {
+async function toggleUnavail(targetUid, dateStr) {
     Swal.fire({ title: 'กำลังอัปเดตสถานะ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
     try {
-        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'toggle_unavailability', data: { uid: currentUser.uid, date: dateStr } }) });
+        const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'toggle_unavailability', data: { uid: targetUid, date: dateStr } }) });
         const result = await res.json();
         if (result.status === 'success') Swal.fire('สำเร็จ', result.message, 'success').then(() => loadScheduleData(currentYear, currentMonth));
         else Swal.fire('ผิดพลาด', result.message, 'error');
