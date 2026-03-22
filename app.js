@@ -102,4 +102,44 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     } catch (error) { Swal.fire('ระบบขัดข้อง', error.message, 'error'); }
 });
 
-// ฟังก์ชัน Forgot Password ใช้โค้ดเดิมได้เลยครับ...
+// ================= จัดการ Event ลืมรหัสผ่าน =================
+async function handleForgotPassword() {
+    const { value: email } = await Swal.fire({
+        title: 'ลืมรหัสผ่าน?',
+        text: 'กรุณากรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัสผ่านชั่วคราวไปให้',
+        input: 'email',
+        inputPlaceholder: 'กรอกอีเมลของคุณ',
+        showCancelButton: true,
+        confirmButtonText: 'ส่งอีเมล',
+        cancelButtonText: 'ยกเลิก',
+        inputValidator: (value) => {
+            if (!value) return 'กรุณากรอกอีเมล!';
+            // ตรวจสอบรูปแบบอีเมลเบื้องต้น
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'รูปแบบอีเมลไม่ถูกต้อง!';
+        }
+    });
+
+    if (email) {
+        Swal.fire({ title: 'กำลังดำเนินการ...', text: 'ระบบกำลังสร้างรหัสผ่านและส่งอีเมล', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'forgot_password',
+                    data: { email }
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                Swal.fire('ส่งสำเร็จ!', result.message, 'success');
+            } else {
+                Swal.fire('ผิดพลาด', result.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('ข้อผิดพลาดของระบบ', error.message, 'error');
+        }
+    }
+}
