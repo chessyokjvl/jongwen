@@ -1,17 +1,19 @@
 // ==========================================
 // 1. ตั้งค่าพื้นฐานและตัวแปร
 // ==========================================
-// ** อย่าลืมเปลี่ยน API_URL เป็นของ Web App คุณ **
 const API_URL = 'https://script.google.com/macros/s/AKfycbyaSbv7j6Bhu-jGGeE7ty9YgXE4YrpNw-13p6LPcbzkjNhyswLTuL5zcEni398qZGUU/exec'; 
 let currentUser = null;
 let currentYear = 2026;
 let currentMonth = 3; 
 let allUsers = [];
 let allShifts = [];
-let blockedDatesList = [];
+let blockedDatesList = []; // เพิ่มตัวแปรเก็บวันงดจัดเวร
 
 const departmentOrder = ['จิตวิทยา', 'สังคมสงเคราะห์', 'การพยาบาลผู้ป่วยนอก', 'การพยาบาลจิตเวชชุมชนและสารเสพติด', 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า'];
 
+// ==========================================
+// เริ่มต้นระบบ
+// ==========================================
 document.addEventListener("DOMContentLoaded", () => {
     const userData = localStorage.getItem('user1323');
     if (!userData) {
@@ -34,18 +36,20 @@ async function loadScheduleData(year, month) {
         if (result.status === 'success') {
             allUsers = result.users;
             allShifts = result.shifts || [];
-            blockedDatesList = result.blockedDates || []; // รับค่าวันงดจัดเวร
+            blockedDatesList = result.blockedDates || []; // รับข้อมูลวันงดจัดเวร
             
+            // Render ทั้ง 3 หน้าต่าง
             renderMasterSchedule(year, month);
             renderMyBookingView(year, month);
-            renderStatsTable(); // เรียกฟังก์ชันสร้างตารางสถิติ
+            if(document.getElementById('statsBody')) renderStatsTable(); // สร้างตารางสถิติ
+
             Swal.close();
         } else { Swal.fire('ผิดพลาด', result.message, 'error'); }
     } catch (error) { Swal.fire('ข้อผิดพลาด', error.message, 'error'); }
 }
 
 // ==========================================
-// ลอจิกตรวจสอบสิทธิ์การจอง (ใช้ร่วมกัน)
+// ลอจิกตรวจสอบสิทธิ์การจอง (Business Logic)
 // ==========================================
 function checkEligibility(user, dayOfWeek) {
     const isHoliday = (dayOfWeek === 0 || dayOfWeek === 6);
@@ -75,7 +79,7 @@ function checkEligibility(user, dayOfWeek) {
 }
 
 // ==========================================
-// View 1: หน้าจองเวรส่วนตัว (เห็นเฉพาะที่ว่าง)
+// View 1: หน้าจองเวรส่วนตัว (Card View)
 // ==========================================
 function renderMyBookingView(year, month) {
     const grid = document.getElementById('myBookingGrid');
@@ -89,17 +93,16 @@ function renderMyBookingView(year, month) {
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const elig = checkEligibility(currentUser, dayOfWeek);
         
-        // หากางเกงเวรของวันนี้
+        // เช็คว่าวันนี้เป็นวันงดจัดเวรหรือไม่
+        const isBlocked = blockedDatesList.find(b => b.date === dateStr);
+        
         const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
         const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
         const hasM2 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '2');
         const hasA1 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '1');
         const hasA2 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '2');
-
-        // เช็คว่าตัวเองมีเวรวันนี้หรือยัง
         const myShiftsToday = shiftsToday.filter(s => s.uid === currentUser.uid);
 
-        // สร้าง Card สำหรับแต่ละวัน
         const col = document.createElement('div');
         col.className = 'col-md-4 col-lg-3 mb-3';
         
@@ -113,31 +116,37 @@ function renderMyBookingView(year, month) {
                     <div class="d-grid gap-2">
         `;
 
-        if (myShiftsToday.length > 0) {
-            myShiftsToday.forEach(s => {
-                html += `<button class="btn btn-primary btn-sm disabled">✅ คุณมีเวร: ${s.period} สาย ${s.line}</button>`;
-            });
-        }
+        if (isBlocked) {
+            // ถ้าเป็นวันงดจัดเวร จะแสดงกล่องข้อความสีแดงและไม่มีปุ่มให้กด
+            html += `<div class="alert alert-danger p-3 text-center mb-0" style="border-radius: 8px;">
+                        <span style="font-size: 2rem;">🚫</span><br>
+                        <strong class="text-danger mt-2 d-block">งดจัดเวร</strong>
+                        <span style="font-size: 0.85rem;">(${isBlocked.reason})</span>
+                     </div>`;
+        } else {
+            // ถ้าไม่ใช่วันงดจัดเวร ให้แสดงปุ่มตามปกติ
+            if (myShiftsToday.length > 0) {
+                myShiftsToday.forEach(s => {
+                    html += `<button class="btn btn-primary btn-sm disabled">✅ คุณมีเวร: ${s.period} สาย ${s.line}</button>`;
+                });
+            }
 
-        // ปุ่มเช้า สาย 1
-        if (elig.canM1) {
-            if (hasM1) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ เช้า สาย 1 (เต็มแล้ว)</button>`;
-            else html += `<button class="btn btn-outline-info btn-sm fw-bold" onclick="quickBook('${dateStr}', 'เช้า', '1', ${elig.isHoliday})">ว่าง: จองเช้า สาย 1</button>`;
-        }
-        // ปุ่มเช้า สาย 2
-        if (elig.canM2) {
-            if (hasM2) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ เช้า สาย 2 (เต็มแล้ว)</button>`;
-            else html += `<button class="btn btn-outline-warning btn-sm fw-bold" onclick="quickBook('${dateStr}', 'เช้า', '2', ${elig.isHoliday})">ว่าง: จองเช้า สาย 2</button>`;
-        }
-        // ปุ่มบ่าย สาย 1
-        if (elig.canA1) {
-            if (hasA1) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ บ่าย สาย 1 (เต็มแล้ว)</button>`;
-            else html += `<button class="btn btn-outline-success btn-sm fw-bold" onclick="quickBook('${dateStr}', 'บ่าย', '1', ${elig.isHoliday})">ว่าง: จองบ่าย สาย 1</button>`;
-        }
-        // ปุ่มบ่าย สาย 2
-        if (elig.canA2) {
-            if (hasA2) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ บ่าย สาย 2 (เต็มแล้ว)</button>`;
-            else html += `<button class="btn btn-outline-danger btn-sm fw-bold" onclick="quickBook('${dateStr}', 'บ่าย', '2', ${elig.isHoliday})">ว่าง: จองบ่าย สาย 2</button>`;
+            if (elig.canM1) {
+                if (hasM1) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ เช้า สาย 1 (เต็มแล้ว)</button>`;
+                else html += `<button class="btn btn-outline-info btn-sm fw-bold" onclick="quickBook('${dateStr}', 'เช้า', '1', ${elig.isHoliday})">ว่าง: จองเช้า สาย 1</button>`;
+            }
+            if (elig.canM2) {
+                if (hasM2) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ เช้า สาย 2 (เต็มแล้ว)</button>`;
+                else html += `<button class="btn btn-outline-warning btn-sm fw-bold" onclick="quickBook('${dateStr}', 'เช้า', '2', ${elig.isHoliday})">ว่าง: จองเช้า สาย 2</button>`;
+            }
+            if (elig.canA1) {
+                if (hasA1) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ บ่าย สาย 1 (เต็มแล้ว)</button>`;
+                else html += `<button class="btn btn-outline-success btn-sm fw-bold" onclick="quickBook('${dateStr}', 'บ่าย', '1', ${elig.isHoliday})">ว่าง: จองบ่าย สาย 1</button>`;
+            }
+            if (elig.canA2) {
+                if (hasA2) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ บ่าย สาย 2 (เต็มแล้ว)</button>`;
+                else html += `<button class="btn btn-outline-danger btn-sm fw-bold" onclick="quickBook('${dateStr}', 'บ่าย', '2', ${elig.isHoliday})">ว่าง: จองบ่าย สาย 2</button>`;
+            }
         }
 
         html += `</div></div></div>`;
@@ -147,12 +156,10 @@ function renderMyBookingView(year, month) {
 }
 
 // ==========================================
-// View 2: หน้าตารางรวม (Admin จองให้คนอื่นได้)
+// View 2: หน้าตารางรวม (Table View)
 // ==========================================
 function renderMasterSchedule(year, month) {
     const daysInMonth = new Date(year, month, 0).getDate();
-    // (ส่วนการสร้าง Header row 1 และ 2 เหมือนเดิมทุกประการ ผมละไว้เพื่อให้โค้ดกระชับ... 
-    // คุณสามารถก๊อปปี้ renderCalendarHeader จากโค้ดชุดก่อนมาใส่ตรงนี้ได้เลย)
     renderCalendarHeader(year, month); 
 
     const tbody = document.getElementById('scheduleBody');
@@ -178,9 +185,15 @@ function renderMasterSchedule(year, month) {
             const dateObj = new Date(year, month - 1, day);
             if (dateObj.getDay() === 0 || dateObj.getDay() === 6) tdDay.classList.add('weekend-col');
 
+            const isBlocked = blockedDatesList.find(b => b.date === dateStr);
             const userShiftsToday = allShifts.filter(s => s.uid === user.uid && s.date.startsWith(dateStr));
 
-            if (userShiftsToday.length > 0) {
+            if (isBlocked) {
+                // ถ้าเป็นวันงดจัดเวร ให้ช่องตารางเป็นสีเทาแดง และเขียนว่า งดเวร
+                tdDay.className += ' bg-danger bg-opacity-10 text-danger text-center align-middle';
+                tdDay.innerHTML = `<span style="font-size: 0.7rem; font-weight: bold; opacity: 0.7;">🚫</span>`;
+                tdDay.title = isBlocked.reason; // เอาเมาส์ชี้จะเห็นเหตุผล
+            } else if (userShiftsToday.length > 0) {
                 userShiftsToday.forEach(shift => {
                     const badge = document.createElement('div');
                     let lbl = '', cls = '';
@@ -194,7 +207,6 @@ function renderMasterSchedule(year, month) {
                 });
             } else {
                 tdDay.className += ' shift-empty';
-                // Admin สามารถคลิกช่องว่างของทุกคนได้, User คลิกได้เฉพาะแถวของตัวเอง
                 if (currentUser.role === 'Admin' || currentUser.uid === user.uid) {
                     tdDay.onclick = () => openAdminBookingModal(user, dateStr, dateObj.getDay());
                 }
@@ -206,9 +218,55 @@ function renderMasterSchedule(year, month) {
 }
 
 // ==========================================
+// View 3: หน้าสถิติและค่าตอบแทน (Stats & OT)
+// ==========================================
+function renderStatsTable() {
+    const tbody = document.getElementById('statsBody');
+    if (!tbody) return; 
+    tbody.innerHTML = '';
+
+    allUsers.forEach(user => {
+        const userShifts = allShifts.filter(s => s.uid === user.uid);
+        
+        let countMorning = 0, countAfternoon = 0, countHoliday = 0, countPaidThisMonth = 0;
+
+        userShifts.forEach(shift => {
+            if (shift.period === 'เช้า') countMorning++;
+            if (shift.period === 'บ่าย') countAfternoon++;
+            if (shift.dayType === 'วันหยุด') countHoliday++;
+
+            // เงื่อนไขได้ OT: เวรบ่าย (ทุกวัน) OR เวรเช้า (เฉพาะวันหยุด)
+            if (shift.period === 'บ่าย' || (shift.period === 'เช้า' && shift.dayType === 'วันหยุด')) {
+                countPaidThisMonth++;
+            }
+        });
+
+        // ดึงยอดยกมา (ถ้าไม่มีให้เป็น 0)
+        const bfPaid = parseInt(user.bfPaid) || 0;
+        const totalCumulativePaid = bfPaid + countPaidThisMonth;
+        const estimatedPay = countPaidThisMonth * 650;
+
+        const tr = document.createElement('tr');
+        tr.className = "text-center align-middle";
+        tr.innerHTML = `
+            <td class="text-start">
+                <span class="fw-bold">${user.fullName}</span><br>
+                <span class="text-muted" style="font-size: 0.75rem;">${user.department}</span>
+            </td>
+            <td>${countMorning}</td>
+            <td>${countAfternoon}</td>
+            <td class="text-warning fw-bold">${countHoliday}</td>
+            <td class="text-success fw-bold" style="font-size: 1.1rem;">${countPaidThisMonth}</td>
+            <td class="text-primary fw-bold">${totalCumulativePaid}</td>
+            <td class="text-danger fw-bold" style="font-size: 1.1rem;">${estimatedPay.toLocaleString()} ฿</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// ==========================================
 // Helpers & Booking Functions
 // ==========================================
-// (ดึง renderCalendarHeader จากเวอร์ชันก่อนมาวางตรงนี้)
 function renderCalendarHeader(year, month) {
     const headerRow1 = document.getElementById('headerRow1');
     const headerRow2 = document.getElementById('headerRow2');
@@ -235,7 +293,7 @@ function renderCalendarHeader(year, month) {
     }
 }
 
-function setupMonthSelector() { /* เหมือนเดิม */ 
+function setupMonthSelector() {
     const selector = document.getElementById('monthSelector');
     const monthsThai = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     monthsThai.forEach((m, index) => {
@@ -249,7 +307,6 @@ function setupMonthSelector() { /* เหมือนเดิม */
 
 function logout() { localStorage.removeItem('user1323'); window.location.href = 'index.html'; }
 
-// จองด่วนจากหน้า Card (สำหรับ User)
 function quickBook(dateStr, period, line, isHoliday) {
     Swal.fire({
         title: 'ยืนยันการจองเวร',
@@ -263,22 +320,20 @@ function quickBook(dateStr, period, line, isHoliday) {
     });
 }
 
-// จองผ่านตารางรวม (สำหรับ Admin หรือกดในแถวตัวเอง)
 function openAdminBookingModal(targetUser, dateStr, dayOfWeek) {
     const elig = checkEligibility(targetUser, dayOfWeek);
     let optionsHTML = '';
     
-    // กรองเอาเฉพาะเวรที่ยังไม่มีใครจอง
     const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
     const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
     const hasM2 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '2');
     const hasA1 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '1');
     const hasA2 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '2');
 
-    if (elig.canM1 && !hasM1) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|1" id="m1"><label class="form-check-label" for="m1">เวรเช้า - สาย 1</label></div>`;
-    if (elig.canM2 && !hasM2) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|2" id="m2"><label class="form-check-label" for="m2">เวรเช้า - สาย 2</label></div>`;
-    if (elig.canA1 && !hasA1) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|1" id="a1"><label class="form-check-label" for="a1">เวรบ่าย - สาย 1</label></div>`;
-    if (elig.canA2 && !hasA2) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|2" id="a2"><label class="form-check-label" for="a2">เวรบ่าย - สาย 2</label></div>`;
+    if (elig.canM1 && !hasM1) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|1" id="m1"><label class="form-check-label text-primary fw-bold" for="m1">เวรเช้า - สาย 1</label></div>`;
+    if (elig.canM2 && !hasM2) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|2" id="m2"><label class="form-check-label text-warning fw-bold" for="m2">เวรเช้า - สาย 2</label></div>`;
+    if (elig.canA1 && !hasA1) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|1" id="a1"><label class="form-check-label text-success fw-bold" for="a1">เวรบ่าย - สาย 1</label></div>`;
+    if (elig.canA2 && !hasA2) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|2" id="a2"><label class="form-check-label text-danger fw-bold" for="a2">เวรบ่าย - สาย 2</label></div>`;
 
     if (optionsHTML === '') {
         Swal.fire('ไม่มีคิวว่าง', `ไม่มีกะว่างที่คุณสามารถจองได้ในวันที่ ${dateStr}`, 'error'); return;
@@ -312,83 +367,14 @@ async function submitShiftBooking(uid, date, dayType, period, line) {
     } catch (error) { Swal.fire('ข้อผิดพลาด', error.message, 'error'); }
 }
 
-// ==========================================
-// 9. ฟังก์ชัน Export เป็น Excel
-// ==========================================
 function exportExcel() {
-    // 1. แจ้งเตือนผู้ใช้ว่ากำลังประมวลผล
-    Swal.fire({
-        title: 'กำลังสร้างไฟล์ Excel...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
-
+    Swal.fire({ title: 'กำลังสร้างไฟล์ Excel...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
     try {
-        // 2. ดึง element ของตารางที่เราต้องการ
         const table = document.getElementById("scheduleTable");
-        
-        // 3. ใช้ SheetJS แปลงตาราง HTML เป็น Workbook
-        const wb = XLSX.utils.table_to_book(table, { 
-            sheet: "ตารางเวร 1323",
-            raw: true // รักษา Format เดิมไว้
-        });
-
-        // 4. ดึงชื่อเดือนที่เลือกอยู่ปัจจุบันมาตั้งเป็นชื่อไฟล์
+        const wb = XLSX.utils.table_to_book(table, { sheet: "ตารางเวร 1323", raw: true });
         const monthSelector = document.getElementById("monthSelector");
         const monthName = monthSelector.options[monthSelector.selectedIndex].text;
-        const fileName = `ตารางเวร_1323_${monthName.replace(' ', '_')}.xlsx`;
-
-        // 5. สั่งดาวน์โหลดไฟล์
-        XLSX.writeFile(wb, fileName);
-        
-        // 6. ปิดแจ้งเตือนเมื่อสำเร็จ
+        XLSX.writeFile(wb, `ตารางเวร_1323_${monthName.replace(' ', '_')}.xlsx`);
         Swal.close();
-    } catch (error) {
-        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถ Export ไฟล์ได้: ' + error.message, 'error');
-    }
-}
-
-// ==========================================
-// 10. ฟังก์ชันคำนวณสถิติและค่าตอบแทน
-// ==========================================
-function renderStatsTable() {
-    const tbody = document.getElementById('statsBody');
-    tbody.innerHTML = '';
-
-    allUsers.forEach(user => {
-        // ดึงเฉพาะเวรของคนนี้ในเดือนนี้
-        const userShifts = allShifts.filter(s => s.uid === user.uid);
-        
-        let countMorning = 0;
-        let countAfternoon = 0;
-        let countHoliday = 0;
-        let countPaidThisMonth = 0;
-
-        userShifts.forEach(shift => {
-            if (shift.period === 'เช้า') countMorning++;
-            if (shift.period === 'บ่าย') countAfternoon++;
-            if (shift.dayType === 'วันหยุด') countHoliday++;
-
-            // เงื่อนไขได้ OT: เวรบ่าย (ทุกวัน) OR เวรเช้า (เฉพาะวันหยุด)
-            if (shift.period === 'บ่าย' || (shift.period === 'เช้า' && shift.dayType === 'วันหยุด')) {
-                countPaidThisMonth++;
-            }
-        });
-
-        const totalCumulativePaid = parseInt(user.bfPaid || 0) + countPaidThisMonth;
-        const estimatedPay = countPaidThisMonth * 650; // เวรละ 650 บาท
-
-        const tr = document.createElement('tr');
-        tr.className = "text-center";
-        tr.innerHTML = `
-            <td class="text-start fw-bold">${user.fullName}</td>
-            <td>${countMorning}</td>
-            <td>${countAfternoon}</td>
-            <td class="text-warning fw-bold">${countHoliday}</td>
-            <td class="text-success fw-bold">${countPaidThisMonth}</td>
-            <td class="text-primary fw-bold">${totalCumulativePaid}</td>
-            <td class="text-danger fw-bold">${estimatedPay.toLocaleString()} ฿</td>
-        `;
-        tbody.appendChild(tr);
-    });
+    } catch (error) { Swal.fire('ข้อผิดพลาด', 'ไม่สามารถ Export ไฟล์ได้: ' + error.message, 'error'); }
 }
