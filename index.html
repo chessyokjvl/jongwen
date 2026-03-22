@@ -176,6 +176,8 @@
 
         .hidden { display: none !important; }
 
+        <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
         /* Responsive */
         @media (max-width: 992px) {
             .auth-card {
@@ -231,36 +233,18 @@
             </div>
 
             <div id="registerSection" class="hidden">
-                <h3 class="form-header">ลงทะเบียนบุคลากรใหม่</h3>
-                <form id="registerForm">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">ชื่อ - สกุล</label>
-                            <input type="text" id="regFullName" class="form-control" placeholder="เช่น นายสมชาย ใจดี" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">ตำแหน่ง</label>
-                            <input type="text" id="regPosition" class="form-control" placeholder="เช่น พยาบาลวิชาชีพชำนาญการ" required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">กลุ่มงาน (สังกัด)</label>
-                        <select id="regDepartment" class="form-select" required>
-                            <option value="" disabled selected>เลือกกลุ่มงาน...</option>
-                            <option value="จิตวิทยา">กลุ่มงานจิตวิทยา (PSY)</option>
-                            <option value="สังคมสงเคราะห์">กลุ่มงานสังคมสงเคราะห์ (SW)</option>
-                            <option value="การพยาบาลผู้ป่วยนอก">กลุ่มงานการพยาบาลผู้ป่วยนอก (OPD)</option>
-                            <option value="การพยาบาลจิตเวชชุมชนและสารเสพติด">กลุ่มงานการพยาบาลจิตเวชชุมชนฯ</option>
-                            <option value="การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า">กลุ่มงานการพยาบาลผู้ป่วยพิเศษ/ECT</option>
-                        </select>
-                    </div>
+            <h3 class="form-header">ลงทะเบียนบุคลากร</h3>
+            <form id="registerForm">
 
-                    <div class="mb-3">
-                        <label class="form-label">เงื่อนไขการรับเวรส่วนตัว (ถ้ามี)</label>
-                        <input type="text" id="regConditions" class="form-control" placeholder="เช่น งดรับเวรบ่าย, รับเฉพาะวันพฤหัส">
-                    </div>
+                <div class="mb-4">
+                    <label class="form-label fw-bold">เลือกชื่อ - สกุล ของคุณ</label>
+                    <select id="regFullNameSelect" placeholder="ค้นหาชื่อของคุณ..." autocomplete="off" required>
+                        <option value="">กำลังโหลดรายชื่อ...</option>
+                    </select>
+                    <small class="text-danger mt-1 d-block">* ระบบจะผูกตำแหน่งและสังกัดอัตโนมัติ (หากไม่มีชื่อแปลว่าลงทะเบียนไปแล้ว)</small>
+                </div>
 
+                ```
                     <hr class="my-4" style="border-color: rgba(192, 160, 96, 0.3);">
 
                     <div class="row">
