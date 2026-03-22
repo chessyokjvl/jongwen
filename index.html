@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจองเวร 1323 - โรงพยาบาลจิตเวชเลยราชนครินทร์</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; }
+        .auth-card { max-width: 500px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .hidden { display: none !important; }
+        .brand-logo { width: 80px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="loginSection" class="auth-card text-center">
+        <h3 class="mb-4">เข้าสู่ระบบจองเวร 1323</h3>
+        <form id="loginForm">
+            <div class="mb-3 text-start">
+                <label class="form-label">Username</label>
+                <input type="text" id="loginUsername" class="form-control" required>
+            </div>
+            <div class="mb-3 text-start">
+                <label class="form-label">Password</label>
+                <input type="password" id="loginPassword" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 mb-3">เข้าสู่ระบบ</button>
+            
+            <div class="d-flex justify-content-between">
+                <a href="#" onclick="toggleView('registerSection')" class="text-decoration-none">สมัครสมาชิกใหม่</a>
+                <a href="#" onclick="handleForgotPassword()" class="text-decoration-none text-danger">ลืมรหัสผ่าน?</a>
+            </div>
+        </form>
+    </div>
+
+    <div id="registerSection" class="auth-card hidden">
+        <h3 class="mb-4 text-center">ลงทะเบียนผู้ใช้งานใหม่</h3>
+        <form id="registerForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">ชื่อ - สกุล</label>
+                    <input type="text" id="regFullName" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">ตำแหน่ง</label>
+                    <input type="text" id="regPosition" class="form-control" placeholder="เช่น พยาบาลวิชาชีพชำนาญการ" required>
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">กลุ่มงาน</label>
+                <select id="regDepartment" class="form-select" required>
+                    <option value="" disabled selected>เลือกกลุ่มงาน...</option>
+                    <option value="จิตวิทยา">จิตวิทยา (PSY)</option>
+                    <option value="สังคมสงเคราะห์">สังคมสงเคราะห์ (SW)</option>
+                    <option value="การพยาบาลผู้ป่วยนอก">การพยาบาลผู้ป่วยนอก (OPD)</option>
+                    <option value="การพยาบาลจิตเวชชุมชนและสารเสพติด">การพยาบาลจิตเวชชุมชนและสารเสพติด</option>
+                    <option value="การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า">การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า (ECT)</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">เงื่อนไขส่วนตัว (ถ้ามี)</label>
+                <input type="text" id="regConditions" class="form-control" placeholder="เช่น งดรับเวรบ่าย, รับเฉพาะวันพฤหัส">
+            </div>
+
+            <hr>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="regUsername" class="form-control" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="regPassword" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email (สำหรับรีเซ็ตรหัสผ่าน)</label>
+                <input type="email" id="regEmail" class="form-control" required>
+            </div>
+
+            <div class="form-check mb-4">
+                <input class="form-check-input" type="checkbox" id="pdpaConsent" required>
+                <label class="form-check-label text-muted" style="font-size: 0.9em;" for="pdpaConsent">
+                    ข้าพเจ้ายินยอมให้ประมวลผลข้อมูลส่วนบุคคลเบื้องต้นเพื่อใช้ในระบบจัดตารางเวร 1323 ตามพ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA)
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 mb-3">ยืนยันการสมัคร</button>
+            <div class="text-center">
+                <a href="#" onclick="toggleView('loginSection')" class="text-decoration-none text-secondary">กลับไปหน้าเข้าสู่ระบบ</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
