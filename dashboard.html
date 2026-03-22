@@ -48,6 +48,33 @@
 
         .weekend-col { background-color: #fdfbfb; }
 
+        /* ================= Calendar Grid (Mobile Friendly) ================= */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .cal-header {
+            text-align: center; font-weight: bold; padding: 5px; background: #f1f3f5; border-radius: 5px; font-size: 0.9rem;
+        }
+        .cal-cell {
+            background: white; border: 1px solid #dee2e6; border-radius: 8px; min-height: 80px; padding: 8px;
+            cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; position: relative;
+        }
+        .cal-cell:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-color: #C0A060; transform: translateY(-2px); }
+        .cal-cell.empty { background: transparent; border: none; cursor: default; box-shadow: none; }
+        .cal-cell.empty:hover { transform: none; }
+        .cal-date-num { font-size: 1.2rem; font-weight: bold; color: #333; }
+        .cal-weekend { color: #dc3545 !important; }
+        .cal-badge { font-size: 0.7rem; padding: 3px 6px; margin-top: 5px; width: 100%; text-align: center; border-radius: 4px; }
+        @media (max-width: 768px) {
+            .cal-cell { min-height: 60px; padding: 4px; }
+            .cal-date-num { font-size: 1rem; }
+            .cal-badge { font-size: 0.6rem; padding: 2px; }
+            .cal-header { font-size: 0.8rem; }
+        }
+        
         /* ================= Print Styles (PDF) ================= */
         @media print {
             /* บังคับให้เบราว์เซอร์พิมพ์สีพื้นหลัง (Background Colors) ของ Badge ออกมาด้วย */
