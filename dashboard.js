@@ -8,6 +8,7 @@ let currentYear = 2026;
 let currentMonth = 3; 
 let allUsers = [];
 let allShifts = [];
+let blockedDatesList = [];
 
 const departmentOrder = ['จิตวิทยา', 'สังคมสงเคราะห์', 'การพยาบาลผู้ป่วยนอก', 'การพยาบาลจิตเวชชุมชนและสารเสพติด', 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า'];
 
