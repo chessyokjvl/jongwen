@@ -1,0 +1,128 @@
+// นำ Web App URL ที่ได้จากขั้นตอน Deploy GAS มาวางที่นี่
+const API_URL = 'https://script.google.com/macros/s/AKfycbyaSbv7j6Bhu-jGGeE7ty9YgXE4YrpNw-13p6LPcbzkjNhyswLTuL5zcEni398qZGUU/exec';
+
+// ฟังก์ชันสลับหน้าต่างระหว่าง Login กับ Register
+function toggleView(targetId) {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('registerSection').classList.add('hidden');
+    document.getElementById(targetId).classList.remove('hidden');
+}
+
+// ================= จัดการ Event เข้าสู่ระบบ =================
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+
+    Swal.fire({ title: 'กำลังตรวจสอบ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'login',
+                data: { username, password }
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            Swal.fire('สำเร็จ!', result.message, 'success').then(() => {
+                // เก็บข้อมูล User ลง LocalStorage เพื่อใช้ในหน้าจองเวร
+                localStorage.setItem('user1323', JSON.stringify(result.user));
+                // **ตรงนี้เดี๋ยวเราจะ Redirect ไปหน้า Dashboard/ตารางเวร**
+                // window.location.href = 'dashboard.html'; 
+                console.log("Logged in user:", result.user);
+            });
+        } else {
+            Swal.fire('ผิดพลาด', result.message, 'error');
+        }
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาดของระบบ', error.message, 'error');
+    }
+});
+
+// ================= จัดการ Event สมัครสมาชิก =================
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    if (!document.getElementById('pdpaConsent').checked) {
+        Swal.fire('แจ้งเตือน', 'กรุณากดยอมรับเงื่อนไข PDPA', 'warning');
+        return;
+    }
+
+    const userData = {
+        fullName: document.getElementById('regFullName').value,
+        position: document.getElementById('regPosition').value,
+        department: document.getElementById('regDepartment').value,
+        conditions: document.getElementById('regConditions').value || '-',
+        username: document.getElementById('regUsername').value,
+        password: document.getElementById('regPassword').value,
+        email: document.getElementById('regEmail').value,
+        role: 'User' // Default role
+    };
+
+    Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'register',
+                data: userData
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            Swal.fire('ลงทะเบียนสำเร็จ!', 'คุณสามารถเข้าสู่ระบบได้ทันที', 'success').then(() => {
+                document.getElementById('registerForm').reset();
+                toggleView('loginSection');
+            });
+        } else {
+            Swal.fire('ผิดพลาด', result.message, 'error');
+        }
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาดของระบบ', error.message, 'error');
+    }
+});
+
+// ================= จัดการ Event ลืมรหัสผ่าน =================
+async function handleForgotPassword() {
+    const { value: email } = await Swal.fire({
+        title: 'ลืมรหัสผ่าน?',
+        text: 'กรุณากรอกอีเมลที่ลงทะเบียนไว้ ระบบจะส่งรหัสผ่านชั่วคราวไปให้',
+        input: 'email',
+        inputPlaceholder: 'กรอกอีเมลของคุณ',
+        showCancelButton: true,
+        confirmButtonText: 'ส่งรหัสผ่าน',
+        cancelButtonText: 'ยกเลิก'
+    });
+
+    if (email) {
+        Swal.fire({ title: 'กำลังดำเนินการ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'forgot_password',
+                    data: { email }
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                Swal.fire('ส่งสำเร็จ!', result.message, 'success');
+            } else {
+                Swal.fire('ผิดพลาด', result.message, 'error');
+            }
+        } catch (error) {
+            Swal.fire('ข้อผิดพลาดของระบบ', error.message, 'error');
+        }
+    }
+}
