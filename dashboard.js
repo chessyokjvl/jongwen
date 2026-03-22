@@ -3,8 +3,15 @@
 // ==========================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbyaSbv7j6Bhu-jGGeE7ty9YgXE4YrpNw-13p6LPcbzkjNhyswLTuL5zcEni398qZGUU/exec'; 
 let currentUser = null;
-let currentYear = 2026; 
-let currentMonth = 3; // 1-12
+
+// =====================================
+// ระบบฉลาด: ค้นหาเดือนปัจจุบัน และตั้งค่า Default ให้เป็น "เดือนถัดไป" อัตโนมัติ
+// =====================================
+let today = new Date();
+today.setMonth(today.getMonth() + 1); // ขยับไป 1 เดือนข้างหน้า
+let currentYear = today.getFullYear(); 
+let currentMonth = today.getMonth() + 1; // 1-12
+
 let allUsers = [];
 let allShifts = [];
 let blockedDatesList = []; 
@@ -517,17 +524,56 @@ function renderCalendarHeader(year, month) {
 function setupMonthSelector() {
     const selector = document.getElementById('monthSelector');
     if(!selector) return;
+    
+    // =====================================
+    // UI: ทำให้ตัวเลือกเดือนเด่นและใหญ่ขึ้น
+    // =====================================
+    selector.className = "form-select form-select-lg fw-bold text-primary shadow-sm";
+    selector.style.border = "2px solid #FF6600";
+    selector.style.fontSize = "1.1rem";
+    
     selector.innerHTML = '';
     const monthsThai = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     
-    // เผื่อล่วงหน้าและย้อนหลัง
-    for(let m = 1; m <= 12; m++) {
+    // =====================================
+    // Logic: สร้างตัวเลือกล่วงหน้า 12 เดือน (รวมเดือนนี้ด้วย เผื่ออยากกลับมาดู)
+    // =====================================
+    let actualDate = new Date(); // วันที่ของจริง ณ วันที่เปิดเว็บ
+    let startYear = actualDate.getFullYear();
+    let startMonth = actualDate.getMonth(); // 0-11
+
+    for(let i = 0; i < 12; i++) {
+        let tempDate = new Date(startYear, startMonth + i, 1);
+        let m = tempDate.getMonth() + 1; // 1-12
+        let y = tempDate.getFullYear();
+        
         const option = document.createElement('option');
-        option.value = m; option.innerText = `${monthsThai[m-1]} ${currentYear + 543}`;
-        if (m === currentMonth) option.selected = true;
+        // เก็บทั้งปีและเดือนไว้ใน value เพื่อแก้ปัญหาการเลือกเดือนข้ามปี
+        option.value = `${y}-${m}`; 
+        
+        // เติมไอคอนและปรับข้อความให้ดูง่าย
+        if (i === 0) {
+            option.innerText = `📅 ${monthsThai[m-1]} ${y + 543} (เดือนนี้)`;
+        } else if (i === 1) {
+            option.innerText = `⭐ ${monthsThai[m-1]} ${y + 543} (เดือนหน้า)`;
+        } else {
+            option.innerText = `📅 ${monthsThai[m-1]} ${y + 543}`;
+        }
+        
+        // ให้เลือก (Selected) เดือนที่ตรงกับ currentMonth ที่เราตั้งไว้ตอนแรก
+        if (m === currentMonth && y === currentYear) {
+            option.selected = true;
+        }
         selector.appendChild(option);
     }
-    selector.addEventListener('change', (e) => { currentMonth = parseInt(e.target.value); loadScheduleData(currentYear, currentMonth); });
+
+    // เมื่อเปลี่ยนเดือน ให้ดึงทั้ง Year และ Month ใหม่มารันข้อมูล
+    selector.addEventListener('change', (e) => { 
+        const [selectedYear, selectedMonth] = e.target.value.split('-');
+        currentYear = parseInt(selectedYear);
+        currentMonth = parseInt(selectedMonth);
+        loadScheduleData(currentYear, currentMonth); 
+    });
 }
 
 function logout() { localStorage.removeItem('user1323'); window.location.href = 'index.html'; }
