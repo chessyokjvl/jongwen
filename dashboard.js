@@ -309,3 +309,39 @@ async function submitShiftBooking(uid, date, dayType, period, line) {
         } else { Swal.fire('ผิดพลาด', result.message, 'error'); }
     } catch (error) { Swal.fire('ข้อผิดพลาด', error.message, 'error'); }
 }
+
+// ==========================================
+// 9. ฟังก์ชัน Export เป็น Excel
+// ==========================================
+function exportExcel() {
+    // 1. แจ้งเตือนผู้ใช้ว่ากำลังประมวลผล
+    Swal.fire({
+        title: 'กำลังสร้างไฟล์ Excel...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        // 2. ดึง element ของตารางที่เราต้องการ
+        const table = document.getElementById("scheduleTable");
+        
+        // 3. ใช้ SheetJS แปลงตาราง HTML เป็น Workbook
+        const wb = XLSX.utils.table_to_book(table, { 
+            sheet: "ตารางเวร 1323",
+            raw: true // รักษา Format เดิมไว้
+        });
+
+        // 4. ดึงชื่อเดือนที่เลือกอยู่ปัจจุบันมาตั้งเป็นชื่อไฟล์
+        const monthSelector = document.getElementById("monthSelector");
+        const monthName = monthSelector.options[monthSelector.selectedIndex].text;
+        const fileName = `ตารางเวร_1323_${monthName.replace(' ', '_')}.xlsx`;
+
+        // 5. สั่งดาวน์โหลดไฟล์
+        XLSX.writeFile(wb, fileName);
+        
+        // 6. ปิดแจ้งเตือนเมื่อสำเร็จ
+        Swal.close();
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถ Export ไฟล์ได้: ' + error.message, 'error');
+    }
+}
