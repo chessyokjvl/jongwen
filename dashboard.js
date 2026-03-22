@@ -81,80 +81,126 @@ function checkEligibility(user, dayOfWeek) {
 // ==========================================
 // View 1: หน้าจองเวรส่วนตัว (Card View)
 // ==========================================
+// ==========================================
+// View 1: หน้าจองเวรส่วนตัว (Calendar Grid View)
+// ==========================================
 function renderMyBookingView(year, month) {
-    const grid = document.getElementById('myBookingGrid');
-    grid.innerHTML = '';
+    const gridContainer = document.getElementById('myBookingGrid');
+    gridContainer.innerHTML = '';
+    
     const daysInMonth = new Date(year, month, 0).getDate();
-    const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+    const firstDayOfWeek = new Date(year, month - 1, 1).getDay(); // 0 (อาทิตย์) ถึง 6 (เสาร์)
+    const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
+    let html = `<div class="calendar-grid w-100">`;
+    
+    // สร้างหัวตารางวัน (อา-ส)
+    dayNames.forEach(d => html += `<div class="cal-header ${d==='อา'||d==='ส' ? 'text-danger' : ''}">${d}</div>`);
+
+    // สร้างช่องว่างสำหรับวันก่อนเริ่มต้นเดือน
+    for (let i = 0; i < firstDayOfWeek; i++) {
+        html += `<div class="cal-cell empty"></div>`;
+    }
+
+    // สร้างช่องวันที่ 1 ถึงสิ้นเดือน
     for (let day = 1; day <= daysInMonth; day++) {
         const dateObj = new Date(year, month - 1, day);
         const dayOfWeek = dateObj.getDay();
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const elig = checkEligibility(currentUser, dayOfWeek);
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         
-        // เช็คว่าวันนี้เป็นวันงดจัดเวรหรือไม่
         const isBlocked = blockedDatesList.find(b => b.date === dateStr);
-        
         const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
-        const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
-        const hasM2 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '2');
-        const hasA1 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '1');
-        const hasA2 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '2');
         const myShiftsToday = shiftsToday.filter(s => s.uid === currentUser.uid);
 
-        const col = document.createElement('div');
-        col.className = 'col-md-4 col-lg-3 mb-3';
-        
-        let cardBg = elig.isHoliday ? 'bg-danger text-white bg-opacity-10' : 'bg-white';
-        let html = `
-            <div class="card shadow-sm h-100 ${cardBg} border-0" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <h6 class="card-title fw-bold border-bottom pb-2 mb-3">
-                        ${dayNames[dayOfWeek]}ที่ ${day} <span class="text-muted" style="font-size:0.8rem">${dateStr}</span>
-                    </h6>
-                    <div class="d-grid gap-2">
-        `;
+        let cellContent = `<span class="cal-date-num ${isWeekend ? 'cal-weekend' : ''}">${day}</span>`;
 
         if (isBlocked) {
-            // ถ้าเป็นวันงดจัดเวร จะแสดงกล่องข้อความสีแดงและไม่มีปุ่มให้กด
-            html += `<div class="alert alert-danger p-3 text-center mb-0" style="border-radius: 8px;">
-                        <span style="font-size: 2rem;">🚫</span><br>
-                        <strong class="text-danger mt-2 d-block">งดจัดเวร</strong>
-                        <span style="font-size: 0.85rem;">(${isBlocked.reason})</span>
-                     </div>`;
+            cellContent += `<div class="cal-badge bg-danger text-white mt-1">🚫 งดจัด</div>`;
+        } else if (myShiftsToday.length > 0) {
+            myShiftsToday.forEach(s => {
+                cellContent += `<div class="cal-badge bg-primary text-white">✅ ${s.period[0]}${s.line}</div>`;
+            });
         } else {
-            // ถ้าไม่ใช่วันงดจัดเวร ให้แสดงปุ่มตามปกติ
-            if (myShiftsToday.length > 0) {
-                myShiftsToday.forEach(s => {
-                    html += `<button class="btn btn-primary btn-sm disabled">✅ คุณมีเวร: ${s.period} สาย ${s.line}</button>`;
-                });
-            }
+            // เช็คว่ามีเวรว่างที่สิทธิ์เราจองได้ไหม
+            const elig = checkEligibility(currentUser, dayOfWeek);
+            const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
+            const hasM2 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '2');
+            const hasA1 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '1');
+            const hasA2 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '2');
 
-            if (elig.canM1) {
-                if (hasM1) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ เช้า สาย 1 (เต็มแล้ว)</button>`;
-                else html += `<button class="btn btn-outline-info btn-sm fw-bold" onclick="quickBook('${dateStr}', 'เช้า', '1', ${elig.isHoliday})">ว่าง: จองเช้า สาย 1</button>`;
-            }
-            if (elig.canM2) {
-                if (hasM2) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ เช้า สาย 2 (เต็มแล้ว)</button>`;
-                else html += `<button class="btn btn-outline-warning btn-sm fw-bold" onclick="quickBook('${dateStr}', 'เช้า', '2', ${elig.isHoliday})">ว่าง: จองเช้า สาย 2</button>`;
-            }
-            if (elig.canA1) {
-                if (hasA1) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ บ่าย สาย 1 (เต็มแล้ว)</button>`;
-                else html += `<button class="btn btn-outline-success btn-sm fw-bold" onclick="quickBook('${dateStr}', 'บ่าย', '1', ${elig.isHoliday})">ว่าง: จองบ่าย สาย 1</button>`;
-            }
-            if (elig.canA2) {
-                if (hasA2) html += `<button class="btn btn-outline-secondary btn-sm disabled">❌ บ่าย สาย 2 (เต็มแล้ว)</button>`;
-                else html += `<button class="btn btn-outline-danger btn-sm fw-bold" onclick="quickBook('${dateStr}', 'บ่าย', '2', ${elig.isHoliday})">ว่าง: จองบ่าย สาย 2</button>`;
+            let availableCount = 0;
+            if (elig.canM1 && !hasM1) availableCount++;
+            if (elig.canM2 && !hasM2) availableCount++;
+            if (elig.canA1 && !hasA1) availableCount++;
+            if (elig.canA2 && !hasA2) availableCount++;
+
+            if (availableCount > 0) {
+                cellContent += `<div class="cal-badge bg-success text-white">ว่าง ${availableCount} กะ</div>`;
+            } else {
+                cellContent += `<div class="cal-badge bg-secondary text-white opacity-50">เต็ม/ไม่มีสิทธิ์</div>`;
             }
         }
 
-        html += `</div></div></div>`;
-        col.innerHTML = html;
-        grid.appendChild(col);
+        // เมื่อกดที่ช่องวันที่ ให้เปิด Modal รายละเอียดการจอง
+        html += `<div class="cal-cell" onclick="openDailyBookingModal('${dateStr}', ${dayOfWeek})">${cellContent}</div>`;
     }
+
+    html += `</div>`;
+    gridContainer.innerHTML = html;
 }
 
+// ==========================================
+// ฟังก์ชันเปิด Modal จองเวรรายวัน (แทนที่ระบบ Card เก่า)
+// ==========================================
+function openDailyBookingModal(dateStr, dayOfWeek) {
+    const isBlocked = blockedDatesList.find(b => b.date === dateStr);
+    if (isBlocked) {
+        Swal.fire('งดจัดเวร', `วันที่ ${dateStr} งดจัดเวรเนื่องจาก: ${isBlocked.reason}`, 'info');
+        return;
+    }
+
+    const elig = checkEligibility(currentUser, dayOfWeek);
+    const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
+    const myShiftsToday = shiftsToday.filter(s => s.uid === currentUser.uid);
+
+    let html = `<div class="text-start mb-3">
+                    <p class="mb-2 fw-bold text-primary">สิทธิ์ของคุณในวันนี้:</p>`;
+
+    // แสดงเวรที่ตัวเองมีแล้ว
+    if (myShiftsToday.length > 0) {
+        myShiftsToday.forEach(s => {
+            html += `<button class="btn btn-primary btn-sm w-100 mb-2 disabled">✅ คุณมีเวร: ${s.period} สาย ${s.line}</button>`;
+        });
+        html += `<hr>`;
+    }
+
+    // สร้างปุ่มจองสำหรับกะที่ว่าง
+    const renderBtn = (canBook, shiftData, period, line, btnClass) => {
+        if (!canBook) return '';
+        if (shiftData) return `<button class="btn btn-outline-secondary btn-sm w-100 mb-2 disabled">❌ ${period} สาย ${line} (เต็มแล้ว)</button>`;
+        return `<button class="btn ${btnClass} btn-sm w-100 mb-2 fw-bold" onclick="Swal.close(); quickBook('${dateStr}', '${period}', '${line}', ${elig.isHoliday})">👉 จองเวร: ${period} สาย ${line}</button>`;
+    };
+
+    html += renderBtn(elig.canM1, shiftsToday.find(s => s.period === 'เช้า' && s.line == '1'), 'เช้า', '1', 'btn-outline-info');
+    html += renderBtn(elig.canM2, shiftsToday.find(s => s.period === 'เช้า' && s.line == '2'), 'เช้า', '2', 'btn-outline-warning');
+    html += renderBtn(elig.canA1, shiftsToday.find(s => s.period === 'บ่าย' && s.line == '1'), 'บ่าย', '1', 'btn-outline-success');
+    html += renderBtn(elig.canA2, shiftsToday.find(s => s.period === 'บ่าย' && s.line == '2'), 'บ่าย', '2', 'btn-outline-danger');
+    
+    html += `</div>`;
+
+    // เช็คว่ามีปุ่มให้กดไหม
+    if (!html.includes('👉 จองเวร')) {
+        html += `<div class="alert alert-secondary p-2 text-center">ไม่มีกะว่างที่คุณสามารถจองได้ในวันนี้</div>`;
+    }
+
+    Swal.fire({
+        title: `เวรประจำวันที่ ${dateStr}`,
+        html: html,
+        showConfirmButton: false,
+        showCloseButton: true
+    });
+}
 // ==========================================
 // View 2: หน้าตารางรวม (Table View)
 // ==========================================
