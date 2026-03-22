@@ -8,6 +8,7 @@ let currentMonth = 3;
 let allUsers = [];
 let allShifts = [];
 let blockedDatesList = []; // เพิ่มตัวแปรเก็บวันงดจัดเวร
+let unavailabilitiesList = [];
 
 const departmentOrder = ['จิตวิทยา', 'สังคมสงเคราะห์', 'การพยาบาลผู้ป่วยนอก', 'การพยาบาลจิตเวชชุมชนและสารเสพติด', 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า'];
 
@@ -36,7 +37,11 @@ async function loadScheduleData(year, month) {
         if (result.status === 'success') {
             allUsers = result.users;
             allShifts = result.shifts || [];
-            blockedDatesList = result.blockedDates || []; // รับข้อมูลวันงดจัดเวร
+            blockedDatesList = result.blockedDates || []; 
+            unavailabilitiesList = result.unavailabilities || []; // รับค่าวันไม่ว่าง
+            
+            // โชว์ปุ่ม Auto เฉพาะ Admin
+            if (currentUser.role === 'Admin') document.getElementById('btnAutoGenerate').style.display = 'inline-block';
             
             // Render ทั้ง 3 หน้าต่าง
             renderMasterSchedule(year, month);
