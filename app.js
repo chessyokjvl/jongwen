@@ -32,8 +32,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             Swal.fire('สำเร็จ!', result.message, 'success').then(() => {
                 // เก็บข้อมูล User ลง LocalStorage เพื่อใช้ในหน้าจองเวร
                 localStorage.setItem('user1323', JSON.stringify(result.user));
-                // **ตรงนี้เดี๋ยวเราจะ Redirect ไปหน้า Dashboard/ตารางเวร**
-                // window.location.href = 'dashboard.html'; 
+                if (result.status === 'success') {
+            Swal.fire('สำเร็จ!', result.message, 'success').then(() => {
+                localStorage.setItem('user1323', JSON.stringify(result.user));
+                window.location.href = 'dashboard.html'; // เพิ่มบรรทัดนี้เพื่อย้ายหน้า
+            });
+        }
                 console.log("Logged in user:", result.user);
             });
         } else {
