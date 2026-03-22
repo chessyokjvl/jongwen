@@ -174,6 +174,13 @@ function openDailyBookingModal(dateStr, dayOfWeek) {
             html += `<button class="btn btn-primary btn-sm w-100 mb-2 disabled">✅ คุณมีเวร: ${s.period} สาย ${s.line}</button>`;
         });
         html += `<hr>`;
+    // เพิ่มปุ่มแจ้งไม่สะดวกรับเวร
+    const isUnavailable = unavailabilitiesList.some(un => un.uid === currentUser.uid && un.date === dateStr);
+    if (isUnavailable) {
+        html += `<button class="btn btn-warning btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${dateStr}')">🛑 ยกเลิกการแจ้งไม่สะดวกรับเวร</button>`;
+    } else {
+        html += `<button class="btn btn-secondary btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${dateStr}')">⛔ แจ้งไม่สะดวกรับเวรวันนี้</button>`;
+    }
     }
 
     // สร้างปุ่มจองสำหรับกะที่ว่าง
