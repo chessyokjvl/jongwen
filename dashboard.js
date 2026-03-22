@@ -219,34 +219,117 @@ function logout() {
 }
 
 // ==========================================
-// 7. ฟังก์ชันสำหรับการจอง (โครงร่างไว้สำหรับสเต็ปถัดไป)
+// 7. ฟังก์ชันสำหรับการจอง (Business Logic)
 // ==========================================
 function openBookingModal(targetUser, dateStr, dayOfWeek) {
-    // เช็คสิทธิ์: คนทั่วไปจองได้เฉพาะชื่อตัวเอง (ยกเว้น Admin จองให้คนอื่นได้)
+    // 1. เช็คสิทธิ์: จองได้เฉพาะชื่อตัวเอง (ยกเว้น Admin)
     if (currentUser.role !== 'Admin' && currentUser.uid !== targetUser.uid) {
         Swal.fire('ไม่อนุญาต', 'คุณสามารถจองเวรได้เฉพาะในชื่อของคุณเองเท่านั้น', 'warning');
         return;
     }
 
-    // ตรงนี้จะเขียน SweetAlert เพื่อให้เลือก กะ (เช้า/บ่าย) และ สาย (1/2) 
-    // โดยจะต้องเอา Business Logic 7 ข้อของคุณมาดักจับเงื่อนไขที่นี่
-    console.log(`เตรียมเปิดหน้าจองเวรให้: ${targetUser.fullName} วันที่: ${dateStr} วันในสัปดาห์: ${dayOfWeek}`);
+    const isHoliday = (dayOfWeek === 0 || dayOfWeek === 6); // 0=อาทิตย์, 6=เสาร์
+    const dept = targetUser.department;
+    const cond = targetUser.conditions || "";
+
+    // ตัวแปรเก็บสิทธิ์การจองในแต่ละกะ
+    let canM1 = false, canM2 = false, canA1 = true, canA2 = true; 
+
+    // 2. ลอจิกระดับกลุ่มงานและวัน (Rule 1-8)
+    if (!isHoliday) {
+        // วันธรรมดา (จันทร์ - ศุกร์)
+        if (dayOfWeek === 1 && dept === 'การพยาบาลผู้ป่วยนอก') canM1 = true;
+        if (dayOfWeek === 2 && dept === 'จิตวิทยา') canM1 = true;
+        if (dayOfWeek === 3 && dept === 'การพยาบาลจิตเวชชุมชนและสารเสพติด') canM1 = true;
+        if (dayOfWeek === 4 && dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') canM2 = true; // พฤหัสบดี
+        if (dayOfWeek === 5 && dept === 'สังคมสงเคราะห์') canM1 = true;
+    } else {
+        // วันหยุด (เสาร์ - อาทิตย์)
+        canM1 = true; // เวรเช้าสาย 1 วันหยุด บังคับมีคนขึ้น (เปิดให้ทุกคน)
+        canM2 = true; // เวรเช้าสาย 2 วันหยุด (สมัครใจ)
+    }
+
+    // 3. ลอจิกระดับบุคคล (กรองตามข้อความเงื่อนไขส่วนตัว)
+    if (cond.includes('งดรับเวรบ่าย')) { canA1 = false; canA2 = false; }
+    if (cond.includes('งดรับเวรเช้าวันธรรมดา') && !isHoliday) { canM1 = false; canM2 = false; }
+    if (cond.includes('รับเฉพาะเวรเช้าวันธรรมดา')) { 
+        canA1 = false; canA2 = false; 
+        if (isHoliday) { canM1 = false; canM2 = false; } 
+    }
+    if (cond.includes('รับเฉพาะเวรสาย 2')) { canM1 = false; canA1 = false; }
+    if (cond.includes('รับเฉพาะเวรเช้าวันพฤหัส')) {
+        if (dayOfWeek !== 4) { canM1 = false; canM2 = false; canA1 = false; canA2 = false; }
+        // อนุโลมถ้ามีเงื่อนไขวันหยุดพ่วงมา
+        if (isHoliday && cond.includes('วันหยุดรับเดือนละ 1 เวรเช้า')) { canM1 = true; canM2 = true; }
+    }
+
+    // 4. สร้างตัวเลือกให้ผู้ใช้
+    let optionsHTML = '';
+    if (canM1) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|1" id="m1"><label class="form-check-label text-primary fw-bold" for="m1">เวรเช้า (08:00-16:00) - สาย 1</label></div>`;
+    if (canM2) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|2" id="m2"><label class="form-check-label text-warning fw-bold" for="m2">เวรเช้า (08:00-16:00) - สาย 2</label></div>`;
+    if (canA1) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|1" id="a1"><label class="form-check-label text-success fw-bold" for="a1">เวรบ่าย (16:00-24:00) - สาย 1</label></div>`;
+    if (canA2) optionsHTML += `<div class="form-check text-start"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|2" id="a2"><label class="form-check-label text-danger fw-bold" for="a2">เวรบ่าย (16:00-24:00) - สาย 2</label></div>`;
+
+    if (optionsHTML === '') {
+        Swal.fire('ไม่มีสิทธิ์จอง', `คุณไม่มีสิทธิ์ขึ้นเวรในวันที่ ${dateStr} ตามเงื่อนไขที่กำหนดไว้`, 'error');
+        return;
+    }
+
+    // 5. แสดง Pop-up ให้เลือกจอง
     Swal.fire({
-        title: 'ระบบจองเวร',
-        text: `ฟังก์ชันจองเวรสำหรับ ${targetUser.fullName} วันที่ ${dateStr} กำลังอยู่ในช่วงพัฒนาลอจิก`,
-        icon: 'info'
+        title: 'ยืนยันการจองเวร',
+        html: `<p>เลือกกะการทำงานสำหรับวันที่ <b>${dateStr}</b></p>
+               <div class="p-3 border rounded bg-light">${optionsHTML}</div>
+               <p class="text-danger mt-2" style="font-size:0.8rem;">*ระบบจองก่อนได้ก่อน (First-come, first-served)</p>`,
+        showCancelButton: true,
+        confirmButtonText: 'บันทึกการจอง',
+        cancelButtonText: 'ยกเลิก',
+        preConfirm: () => {
+            const selected = document.querySelector('input[name="shiftOption"]:checked');
+            if (!selected) { Swal.showValidationMessage('กรุณาเลือกกะการทำงาน'); return false; }
+            return selected.value;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const [period, line] = result.value.split('|');
+            submitShiftBooking(targetUser.uid, dateStr, isHoliday ? 'วันหยุด' : 'วันธรรมดา', period, line);
+        }
     });
+}
+
+// ==========================================
+// 8. ยิง API บันทึกการจองเวร
+// ==========================================
+async function submitShiftBooking(uid, date, dayType, period, line) {
+    Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'book_shift',
+                data: { uid, date, dayType, period, line }
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            Swal.fire('จองเวรสำเร็จ!', '', 'success').then(() => {
+                loadScheduleData(currentYear, currentMonth); // โหลดตารางใหม่เพื่อแสดงผล
+            });
+        } else {
+            Swal.fire('ไม่สามารถจองได้', result.message, 'error');
+        }
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาด', error.message, 'error');
+    }
 }
 
 function viewShiftDetails(shift, fullName) {
     Swal.fire({
         title: 'รายละเอียดเวร',
         html: `ผู้ปฏิบัติงาน: <b>${fullName}</b><br>วันที่: <b>${shift.date}</b><br>กะ: <b>${shift.period} สาย ${shift.line}</b>`,
-        icon: 'info',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'ยกเลิกเวรนี้ (Dev)',
-        cancelButtonText: 'ปิด'
+        icon: 'info'
     });
 }
