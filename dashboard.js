@@ -347,3 +347,48 @@ function exportExcel() {
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถ Export ไฟล์ได้: ' + error.message, 'error');
     }
 }
+
+// ==========================================
+// 10. ฟังก์ชันคำนวณสถิติและค่าตอบแทน
+// ==========================================
+function renderStatsTable() {
+    const tbody = document.getElementById('statsBody');
+    tbody.innerHTML = '';
+
+    allUsers.forEach(user => {
+        // ดึงเฉพาะเวรของคนนี้ในเดือนนี้
+        const userShifts = allShifts.filter(s => s.uid === user.uid);
+        
+        let countMorning = 0;
+        let countAfternoon = 0;
+        let countHoliday = 0;
+        let countPaidThisMonth = 0;
+
+        userShifts.forEach(shift => {
+            if (shift.period === 'เช้า') countMorning++;
+            if (shift.period === 'บ่าย') countAfternoon++;
+            if (shift.dayType === 'วันหยุด') countHoliday++;
+
+            // เงื่อนไขได้ OT: เวรบ่าย (ทุกวัน) OR เวรเช้า (เฉพาะวันหยุด)
+            if (shift.period === 'บ่าย' || (shift.period === 'เช้า' && shift.dayType === 'วันหยุด')) {
+                countPaidThisMonth++;
+            }
+        });
+
+        const totalCumulativePaid = parseInt(user.bfPaid || 0) + countPaidThisMonth;
+        const estimatedPay = countPaidThisMonth * 650; // เวรละ 650 บาท
+
+        const tr = document.createElement('tr');
+        tr.className = "text-center";
+        tr.innerHTML = `
+            <td class="text-start fw-bold">${user.fullName}</td>
+            <td>${countMorning}</td>
+            <td>${countAfternoon}</td>
+            <td class="text-warning fw-bold">${countHoliday}</td>
+            <td class="text-success fw-bold">${countPaidThisMonth}</td>
+            <td class="text-primary fw-bold">${totalCumulativePaid}</td>
+            <td class="text-danger fw-bold">${estimatedPay.toLocaleString()} ฿</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
