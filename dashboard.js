@@ -357,13 +357,23 @@ async function deleteShiftBooking(shiftId) {
 }
 
 // ==========================================
-// View 3: หน้าสถิติและค่าตอบแทน (Stats & OT)
+// View 3: หน้าสถิติและค่าตอบแทน (Stats & OT) แบบสมบูรณ์
 // ==========================================
 function renderStatsTable() {
     const tbody = document.getElementById('statsBody');
-    if (!tbody) return; 
+    const deptBody = document.getElementById('deptStatsBody');
+    if (!tbody || !deptBody) return; 
+    
     tbody.innerHTML = '';
+    deptBody.innerHTML = '';
 
+    // 1. เตรียม Object สำหรับเก็บสถิติรวมของแต่ละกลุ่มงาน
+    const deptStats = {};
+    departmentOrder.forEach(dept => {
+        deptStats[dept] = { morning: 0, afternoon: 0, holiday: 0, paid: 0 };
+    });
+
+    // 2. คำนวณรายบุคคล และสะสมเข้ากลุ่มงาน
     allUsers.forEach(user => {
         const userShifts = allShifts.filter(s => s.uid === user.uid);
         
@@ -380,11 +390,23 @@ function renderStatsTable() {
             }
         });
 
-        // ดึงยอดยกมา (ถ้าไม่มีให้เป็น 0)
+        // บวกยอดเข้ากลุ่มงาน
+        if (deptStats[user.department]) {
+            deptStats[user.department].morning += countMorning;
+            deptStats[user.department].afternoon += countAfternoon;
+            deptStats[user.department].holiday += countHoliday;
+            deptStats[user.department].paid += countPaidThisMonth;
+        }
+
+        // คำนวณรายบุคคล (รวมยอดยกมา)
         const bfPaid = parseInt(user.bfPaid) || 0;
+        const bfHoliday = parseInt(user.bfHoliday) || 0;
+        
         const totalCumulativePaid = bfPaid + countPaidThisMonth;
+        const totalCumulativeHoliday = bfHoliday + countHoliday;
         const estimatedPay = countPaidThisMonth * 650;
 
+        // วาดตารางบุคคล
         const tr = document.createElement('tr');
         tr.className = "text-center align-middle";
         tr.innerHTML = `
@@ -394,15 +416,30 @@ function renderStatsTable() {
             </td>
             <td>${countMorning}</td>
             <td>${countAfternoon}</td>
-            <td class="text-warning fw-bold">${countHoliday}</td>
-            <td class="text-success fw-bold" style="font-size: 1.1rem;">${countPaidThisMonth}</td>
-            <td class="text-primary fw-bold">${totalCumulativePaid}</td>
+            <td class="table-warning fw-bold text-danger">${countHoliday}</td>
+            <td class="table-warning fw-bold">${totalCumulativeHoliday}</td>
+            <td class="table-primary fw-bold text-success" style="font-size: 1.1rem;">${countPaidThisMonth}</td>
+            <td class="table-primary fw-bold">${totalCumulativePaid}</td>
             <td class="text-danger fw-bold" style="font-size: 1.1rem;">${estimatedPay.toLocaleString()} ฿</td>
         `;
         tbody.appendChild(tr);
     });
-}
 
+    // 3. วาดตารางสรุปกลุ่มงาน
+    departmentOrder.forEach(dept => {
+        const stats = deptStats[dept];
+        const tr = document.createElement('tr');
+        tr.className = "text-center align-middle";
+        tr.innerHTML = `
+            <td class="text-start fw-bold text-primary">${dept}</td>
+            <td>${stats.morning}</td>
+            <td>${stats.afternoon}</td>
+            <td class="fw-bold text-danger" style="font-size: 1.1rem;">${stats.holiday}</td>
+            <td class="fw-bold text-success" style="font-size: 1.1rem;">${stats.paid}</td>
+        `;
+        deptBody.appendChild(tr);
+    });
+}
 // ==========================================
 // Helpers & Booking Functions
 // ==========================================
