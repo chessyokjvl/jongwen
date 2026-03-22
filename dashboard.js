@@ -217,8 +217,12 @@ function renderMasterSchedule(year, month) {
     let seq = 1;
     allUsers.forEach(user => {
         const tr = document.createElement('tr');
+        
+        // เพิ่ม Badge บอกสถานะการลงทะเบียนให้ Admin เห็น
+        const regBadge = user.isRegistered ? '' : '<br><span class="badge bg-secondary opacity-75 mt-1" style="font-size:0.6rem; font-weight:normal;">ยังไม่ลงทะเบียน</span>';
+        
         tr.innerHTML = `<td class="sticky-col-1 fw-bold text-center">${seq++}</td>
-                        <td class="sticky-col-2">${user.fullName}</td>
+                        <td class="sticky-col-2" style="line-height:1.2;">${user.fullName}${regBadge}</td>
                         <td class="sticky-col-3 text-muted" style="font-size:0.8rem">${user.position}</td>`;
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -235,7 +239,6 @@ function renderMasterSchedule(year, month) {
                 tdDay.innerHTML = `<span style="font-size: 0.7rem; font-weight: bold; opacity: 0.7;">🚫</span>`;
                 tdDay.title = isBlocked.reason; 
             } else {
-                // วาด Badge ถ้ามีเวรอยู่แล้ว
                 if (userShiftsToday.length > 0) {
                     userShiftsToday.forEach(shift => {
                         const badge = document.createElement('div');
@@ -252,12 +255,8 @@ function renderMasterSchedule(year, month) {
                     tdDay.className += ' shift-empty';
                 }
 
-                // =====================================
-                // เปิดให้ Admin (หรือตัวเอง) คลิกจัดการได้ทุกช่อง
-                // =====================================
                 if (currentUser.role === 'Admin' || currentUser.uid === user.uid) {
                     tdDay.style.cursor = 'pointer';
-                    // เพิ่ม hover effect ให้รู้ว่าคลิกได้
                     tdDay.onmouseover = () => tdDay.style.backgroundColor = '#e2e6ea';
                     tdDay.onmouseout = () => tdDay.style.backgroundColor = '';
                     
@@ -269,7 +268,6 @@ function renderMasterSchedule(year, month) {
         tbody.appendChild(tr);
     });
 }
-
 // ==========================================
 // ฟังก์ชันจัดการเวร (เพิ่ม/ลบ) ในตารางรวม
 // ==========================================
