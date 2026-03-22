@@ -9,9 +9,19 @@ function toggleView(targetId) {
 }
 
 // ================= จัดการ Event เข้าสู่ระบบ =================
+let isLoggingIn = false; // ตัวแปรป้องกันการกดซ้ำ (Double Submit)
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    // ถ้ากำลังประมวลผลอยู่ ให้หยุดคำสั่งนี้เลยเพื่อป้องกันการยิง API ซ้ำ
+    if (isLoggingIn) return; 
+    isLoggingIn = true;
+    
+    // ปิดปุ่มล็อกอินชั่วคราวไม่ให้กดซ้ำได้
+    const submitBtn = document.querySelector('#loginForm button[type="submit"]');
+    submitBtn.disabled = true; 
+
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
 
@@ -29,25 +39,30 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const result = await response.json();
 
         if (result.status === 'success') {
-            Swal.fire('สำเร็จ!', result.message, 'success').then(() => {
-                // เก็บข้อมูล User ลง LocalStorage เพื่อใช้ในหน้าจองเวร
+            // ปรับให้ Alert ปิดเองใน 1.5 วินาที ผู้ใช้ไม่ต้องกดอะไรเพิ่ม
+            Swal.fire({
+                title: 'เข้าสู่ระบบสำเร็จ!',
+                text: 'กำลังพาท่านเข้าสู่ระบบจองเวร...',
+                icon: 'success',
+                timer: 1500, // เวลา 1500 มิลลิวินาที (1.5 วิ)
+                showConfirmButton: false // ซ่อนปุ่ม OK ไปเลย ป้องกันคนกด Enter ซ้ำ
+            }).then(() => {
                 localStorage.setItem('user1323', JSON.stringify(result.user));
-                if (result.status === 'success') {
-            Swal.fire('สำเร็จ!', result.message, 'success').then(() => {
-                localStorage.setItem('user1323', JSON.stringify(result.user));
-                window.location.href = 'dashboard.html'; // เพิ่มบรรทัดนี้เพื่อย้ายหน้า
-            });
-        }
-                console.log("Logged in user:", result.user);
+                window.location.href = 'dashboard.html'; 
             });
         } else {
             Swal.fire('ผิดพลาด', result.message, 'error');
+            // ถ้าล็อกอินผิดพลาด คืนค่าให้กลับมากดใหม่ได้
+            isLoggingIn = false;
+            submitBtn.disabled = false;
         }
     } catch (error) {
         Swal.fire('ข้อผิดพลาดของระบบ', error.message, 'error');
+        // ถ้าเซิร์ฟเวอร์มีปัญหา คืนค่าให้กลับมากดใหม่ได้
+        isLoggingIn = false;
+        submitBtn.disabled = false;
     }
 });
-
 // ================= จัดการ Event สมัครสมาชิก =================
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
