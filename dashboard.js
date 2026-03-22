@@ -198,7 +198,7 @@ function openDailyBookingModal(dateStr, dayOfWeek) {
     });
 }
 // ==========================================
-// View 2: หน้าตารางรวม (Table View)
+// View 2: หน้าตารางรวม (Master Schedule - สำหรับ Admin)
 // ==========================================
 function renderMasterSchedule(year, month) {
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -231,31 +231,130 @@ function renderMasterSchedule(year, month) {
             const userShiftsToday = allShifts.filter(s => s.uid === user.uid && s.date.startsWith(dateStr));
 
             if (isBlocked) {
-                // ถ้าเป็นวันงดจัดเวร ให้ช่องตารางเป็นสีเทาแดง และเขียนว่า งดเวร
                 tdDay.className += ' bg-danger bg-opacity-10 text-danger text-center align-middle';
                 tdDay.innerHTML = `<span style="font-size: 0.7rem; font-weight: bold; opacity: 0.7;">🚫</span>`;
-                tdDay.title = isBlocked.reason; // เอาเมาส์ชี้จะเห็นเหตุผล
-            } else if (userShiftsToday.length > 0) {
-                userShiftsToday.forEach(shift => {
-                    const badge = document.createElement('div');
-                    let lbl = '', cls = '';
-                    if (shift.period === 'เช้า' && shift.line == '1') { lbl = 'ช1'; cls = 'shift-m1'; }
-                    else if (shift.period === 'เช้า' && shift.line == '2') { lbl = 'ช2'; cls = 'shift-m2'; }
-                    else if (shift.period === 'บ่าย' && shift.line == '1') { lbl = 'บ1'; cls = 'shift-a1'; }
-                    else if (shift.period === 'บ่าย' && shift.line == '2') { lbl = 'บ2'; cls = 'shift-a2'; }
-                    badge.className = `badge ${cls} m-1 p-2`;
-                    badge.innerText = lbl;
-                    tdDay.appendChild(badge);
-                });
+                tdDay.title = isBlocked.reason; 
             } else {
-                tdDay.className += ' shift-empty';
+                // วาด Badge ถ้ามีเวรอยู่แล้ว
+                if (userShiftsToday.length > 0) {
+                    userShiftsToday.forEach(shift => {
+                        const badge = document.createElement('div');
+                        let lbl = '', cls = '';
+                        if (shift.period === 'เช้า' && shift.line == '1') { lbl = 'ช1'; cls = 'shift-m1'; }
+                        else if (shift.period === 'เช้า' && shift.line == '2') { lbl = 'ช2'; cls = 'shift-m2'; }
+                        else if (shift.period === 'บ่าย' && shift.line == '1') { lbl = 'บ1'; cls = 'shift-a1'; }
+                        else if (shift.period === 'บ่าย' && shift.line == '2') { lbl = 'บ2'; cls = 'shift-a2'; }
+                        badge.className = `badge ${cls} m-1 p-2 w-100`;
+                        badge.innerText = lbl;
+                        tdDay.appendChild(badge);
+                    });
+                } else {
+                    tdDay.className += ' shift-empty';
+                }
+
+                // =====================================
+                // เปิดให้ Admin (หรือตัวเอง) คลิกจัดการได้ทุกช่อง
+                // =====================================
                 if (currentUser.role === 'Admin' || currentUser.uid === user.uid) {
-                    tdDay.onclick = () => openAdminBookingModal(user, dateStr, dateObj.getDay());
+                    tdDay.style.cursor = 'pointer';
+                    // เพิ่ม hover effect ให้รู้ว่าคลิกได้
+                    tdDay.onmouseover = () => tdDay.style.backgroundColor = '#e2e6ea';
+                    tdDay.onmouseout = () => tdDay.style.backgroundColor = '';
+                    
+                    tdDay.onclick = () => manageShiftModal(user, dateStr, dateObj.getDay(), userShiftsToday);
                 }
             }
             tr.appendChild(tdDay);
         }
         tbody.appendChild(tr);
+    });
+}
+
+// ==========================================
+// ฟังก์ชันจัดการเวร (เพิ่ม/ลบ) ในตารางรวม
+// ==========================================
+function manageShiftModal(targetUser, dateStr, dayOfWeek, existingShifts) {
+    const elig = checkEligibility(targetUser, dayOfWeek);
+    const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
+    
+    let html = `<div class="text-start">`;
+
+    // 1. ส่วนลบเวร: โชว์เวรที่คนนี้มีอยู่ พร้อมปุ่มกดยกเลิก
+    if (existingShifts.length > 0) {
+        html += `<p class="fw-bold text-danger mb-2">เวรที่จัดไว้แล้ว (คลิกเพื่อยกเลิก):</p>`;
+        existingShifts.forEach(s => {
+            html += `<button class="btn btn-outline-danger btn-sm w-100 mb-2" onclick="Swal.close(); deleteShiftBooking('${s.shiftId}')">
+                        🗑️ ยกเลิกเวร ${s.period} สาย ${s.line}
+                     </button>`;
+        });
+        html += `<hr>`;
+    }
+
+    // 2. ส่วนเพิ่มเวร: โชว์เฉพาะกะที่ยังว่างและมีสิทธิ์
+    const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
+    const hasM2 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '2');
+    const hasA1 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '1');
+    const hasA2 = shiftsToday.find(s => s.period === 'บ่าย' && s.line == '2');
+
+    let optionsHTML = '';
+    if (elig.canM1 && !hasM1) optionsHTML += `<div class="form-check"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|1" id="m1"><label class="form-check-label text-primary fw-bold" for="m1">เพิ่มเวรเช้า - สาย 1</label></div>`;
+    if (elig.canM2 && !hasM2) optionsHTML += `<div class="form-check"><input class="form-check-input" type="radio" name="shiftOption" value="เช้า|2" id="m2"><label class="form-check-label text-warning fw-bold" for="m2">เพิ่มเวรเช้า - สาย 2</label></div>`;
+    if (elig.canA1 && !hasA1) optionsHTML += `<div class="form-check"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|1" id="a1"><label class="form-check-label text-success fw-bold" for="a1">เพิ่มเวรบ่าย - สาย 1</label></div>`;
+    if (elig.canA2 && !hasA2) optionsHTML += `<div class="form-check"><input class="form-check-input" type="radio" name="shiftOption" value="บ่าย|2" id="a2"><label class="form-check-label text-danger fw-bold" for="a2">เพิ่มเวรบ่าย - สาย 2</label></div>`;
+
+    if (optionsHTML !== '') {
+        html += `<p class="fw-bold text-success mb-2">จัดเวรเพิ่ม:</p>`;
+        html += `<div class="p-3 border rounded bg-light">${optionsHTML}</div>`;
+    } else {
+        html += `<div class="alert alert-secondary p-2 mt-2 text-center">ไม่มีกะว่างให้เพิ่ม หรือถูกจำกัดสิทธิ์ในวันนี้</div>`;
+    }
+
+    html += `</div>`;
+
+    Swal.fire({
+        title: `จัดการเวร: ${targetUser.fullName}`,
+        html: html,
+        showCancelButton: true,
+        showConfirmButton: optionsHTML !== '', // ซ่อนปุ่ม Confirm ถ้าไม่มีอะไรให้เพิ่ม
+        confirmButtonText: 'บันทึกเวรใหม่',
+        cancelButtonText: 'ปิด',
+        preConfirm: () => {
+            const selected = document.querySelector('input[name="shiftOption"]:checked');
+            if (!selected) { Swal.showValidationMessage('กรุณาเลือกกะที่ต้องการเพิ่ม หรือกดปิด'); return false; }
+            return selected.value;
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const [period, line] = result.value.split('|');
+            submitShiftBooking(targetUser.uid, dateStr, elig.isHoliday ? 'วันหยุด' : 'วันธรรมดา', period, line);
+        }
+    });
+}
+
+// ==========================================
+// ฟังก์ชันเรียก API สำหรับลบเวร
+// ==========================================
+async function deleteShiftBooking(shiftId) {
+    Swal.fire({
+        title: 'ยืนยันการยกเลิก?',
+        text: "คุณต้องการยกเลิกเวรนี้ใช่หรือไม่ (ไม่สามารถกู้คืนได้)",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'ใช่, ลบเลย!',
+        cancelButtonText: 'ยกเลิก'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            Swal.fire({ title: 'กำลังลบ...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+            try {
+                const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete_shift', data: { shiftId } }) });
+                const resultData = await res.json();
+                if (resultData.status === 'success') {
+                    Swal.fire('ลบสำเร็จ!', '', 'success').then(() => loadScheduleData(currentYear, currentMonth));
+                } else { Swal.fire('ผิดพลาด', resultData.message, 'error'); }
+            } catch (error) { Swal.fire('ข้อผิดพลาด', error.message, 'error'); }
+        }
     });
 }
 
