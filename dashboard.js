@@ -34,10 +34,11 @@ async function loadScheduleData(year, month) {
         if (result.status === 'success') {
             allUsers = result.users;
             allShifts = result.shifts || [];
+            blockedDatesList = result.blockedDates || []; // รับค่าวันงดจัดเวร
             
-            // Render ทั้ง 2 หน้า
             renderMasterSchedule(year, month);
             renderMyBookingView(year, month);
+            renderStatsTable(); // เรียกฟังก์ชันสร้างตารางสถิติ
             Swal.close();
         } else { Swal.fire('ผิดพลาด', result.message, 'error'); }
     } catch (error) { Swal.fire('ข้อผิดพลาด', error.message, 'error'); }
