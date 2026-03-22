@@ -184,21 +184,42 @@
             </div>
 
             <div class="tab-pane fade" id="pills-stats" role="tabpanel">
+                
+                <h5 class="fw-bold text-primary mb-3 mt-2"><i class="fw-bold">📊 สรุปภาพรวมระดับกลุ่มงาน (เดือนนี้)</i></h5>
+                <div class="table-container mb-4">
+                    <table class="table table-hover table-bordered bg-white">
+                        <thead class="table-info text-center">
+                            <tr>
+                                <th class="align-middle">กลุ่มงาน</th>
+                                <th>เวรเช้า</th>
+                                <th>เวรบ่าย</th>
+                                <th class="text-danger">เวรวันหยุด</th>
+                                <th class="text-success">เวรที่ได้ค่าตอบแทน</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deptStatsBody">
+                            </tbody>
+                    </table>
+                </div>
+
+                <h5 class="fw-bold text-primary mb-3"><i class="fw-bold">👤 สถิติรายบุคคล</i></h5>
                 <div class="table-container">
                     <table class="table table-hover table-bordered bg-white" id="statsTable">
-                        <thead class="table-success text-center">
+                        <thead class="table-success text-center align-middle">
                             <tr>
-                                <th rowspan="2" class="align-middle">ชื่อ - สกุล</th>
-                                <th colspan="3">จำนวนเวร (เดือนนี้)</th>
-                                <th colspan="2">เวรที่ได้ค่าตอบแทน (OT)</th>
-                                <th rowspan="2" class="align-middle text-danger">ประมาณการรายได้ (เดือนนี้)</th>
+                                <th rowspan="2">ชื่อ - สกุล</th>
+                                <th colspan="2">กะการทำงาน (เดือนนี้)</th>
+                                <th colspan="2" class="table-warning">เวรวันหยุด</th>
+                                <th colspan="2" class="table-primary">เวรที่ได้ค่าตอบแทน (OT)</th>
+                                <th rowspan="2" class="text-danger">ประมาณการรายได้ (เดือนนี้)</th>
                             </tr>
                             <tr>
                                 <th>เช้า</th>
                                 <th>บ่าย</th>
-                                <th>วันหยุด</th>
-                                <th>เดือนนี้</th>
-                                <th>สะสม (รวมยกมา)</th>
+                                <th class="table-warning">เดือนนี้</th>
+                                <th class="table-warning">สะสม (รวมยกมา)</th>
+                                <th class="table-primary">เดือนนี้</th>
+                                <th class="table-primary">สะสม (รวมยกมา)</th>
                             </tr>
                         </thead>
                         <tbody id="statsBody">
