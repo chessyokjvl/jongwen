@@ -47,6 +47,51 @@
         .shift-empty:hover { background-color: #e2e6ea; }
 
         .weekend-col { background-color: #fdfbfb; }
+
+        /* ================= Print Styles (PDF) ================= */
+        @media print {
+            /* บังคับให้เบราว์เซอร์พิมพ์สีพื้นหลัง (Background Colors) ของ Badge ออกมาด้วย */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            body { background-color: white; }
+            
+            /* ซ่อนเมนู ปุ่ม และแท็บต่างๆ ที่ไม่จำเป็นต้องปรินท์ */
+            .navbar, .nav-pills, .btn, #monthSelector, .alert { 
+                display: none !important; 
+            }
+            
+            /* ปลดล็อกโครงสร้างตารางให้แสดงเต็มหน้ากระดาษ */
+            .table-container { 
+                box-shadow: none; 
+                overflow: visible; 
+                padding: 0; 
+                margin: 0; 
+            }
+            
+            /* ปรับขนาดฟอนต์และเส้นขอบให้เหมาะกับกระดาษ A4 แนวนอน */
+            .table-schedule { 
+                width: 100%; 
+                min-width: 100%;
+                font-size: 8pt; /* ลดขนาดฟอนต์ลงเพื่อให้พอดีหน้า */
+            }
+            
+            /* ยกเลิก Sticky Column ตอนปรินท์ */
+            .sticky-col-1, .sticky-col-2, .sticky-col-3 {
+                position: static;
+            }
+
+            /* เพิ่มหัวกระดาษตอนปรินท์ */
+            .container-fluid::before {
+                content: "ตารางปฏิบัติงานสายด่วนสุขภาพจิต 1323 โรงพยาบาลจิตเวชเลยราชนครินทร์";
+                display: block;
+                font-size: 14pt;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 15px;
+            }
+        }
     </style>
 </head>
 <body>
