@@ -93,11 +93,7 @@ function checkEligibility(user, dayOfWeek) {
         if (dayOfWeek === 1 && dept === 'การพยาบาลผู้ป่วยนอก') canM1 = true;
         if (dayOfWeek === 2 && dept === 'จิตวิทยา') canM1 = true;
         if (dayOfWeek === 3 && dept === 'การพยาบาลจิตเวชชุมชนและสารเสพติด') canM1 = true;
-        if (dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') {
-    canM1 = true;
-    canM2 = true;
-    canA1 = true;
-    canA2 = true; 
+        if (dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') {canM1 = true; canM2 = true; canA1 = true; canA2 = true;} 
         if (dayOfWeek === 5 && dept === 'สังคมสงเคราะห์') canM1 = true;
     } else {
         canM1 = true; canM2 = true;
