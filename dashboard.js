@@ -62,6 +62,13 @@ async function loadScheduleData(year, month) {
             blockedDatesList = result.blockedDates || []; 
             unavailabilitiesList = result.unavailabilities || [];
             
+            // 🌟 แก้ปัญหาการจำค่าเดิม: อัปเดตข้อมูลเงื่อนไขของ User ให้ตรงกับ Sheet ล่าสุดเสมอ
+            const updatedMe = allUsers.find(u => u.uid === currentUser.uid);
+            if (updatedMe) {
+                currentUser = updatedMe;
+                localStorage.setItem('user1323', JSON.stringify(currentUser));
+            }
+
             renderMyBookingView(year, month);
             renderMasterSchedule(year, month);
             if (document.getElementById('statsBody')) renderStatsTable();
@@ -80,18 +87,23 @@ function checkEligibility(user, dayOfWeek) {
     const cond = user.conditions || "";
     let canM1 = false, canM2 = false, canA1 = true, canA2 = true; 
 
-    // กฎระดับกลุ่มงาน (อัปเดต ECT ให้ขึ้นสาย 1 และสาย 2 ได้)
+    // กฎระดับกลุ่มงาน
     if (!isHoliday) {
         if (dayOfWeek === 1 && dept === 'การพยาบาลผู้ป่วยนอก') canM1 = true;
         if (dayOfWeek === 2 && dept === 'จิตวิทยา') canM1 = true;
         if (dayOfWeek === 3 && dept === 'การพยาบาลจิตเวชชุมชนและสารเสพติด') canM1 = true;
-        if (dayOfWeek === 4 && dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') { canM1 = true; canM2 = true; } // ปลดล็อกสาย 1
+        if (dayOfWeek === 4 && dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') { canM1 = true; canM2 = true; } 
         if (dayOfWeek === 5 && dept === 'สังคมสงเคราะห์') canM1 = true;
+
+        // 🌟 ปลดล็อกพิเศษ: ให้ ECT สามารถจองเวรเช้า สาย 1 ได้ทุกวันธรรมดา (จันทร์-ศุกร์)
+        if (dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') {
+            canM1 = true;
+        }
     } else {
         canM1 = true; canM2 = true;
     }
 
-    // กฎระดับบุคคล (ตรวจสอบจากคำในแผ่นงาน Personnel)
+    // กฎระดับบุคคล
     if (cond.includes('งดรับเวรบ่าย')) { canA1 = false; canA2 = false; }
     if (cond.includes('งดรับเวรเช้าวันธรรมดา') && !isHoliday) { canM1 = false; canM2 = false; }
     if (cond.includes('รับเฉพาะเวรเช้าวันธรรมดา')) { canA1 = false; canA2 = false; if (isHoliday) { canM1 = false; canM2 = false; } }
