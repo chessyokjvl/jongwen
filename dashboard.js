@@ -1,29 +1,22 @@
 // ==========================================
-// 1. ตั้งค่าพื้นฐานและตัวแปร
+// 1. ตั้งค่าพื้นฐานและตัวแปรระบบ
 // ==========================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbyaSbv7j6Bhu-jGGeE7ty9YgXE4YrpNw-13p6LPcbzkjNhyswLTuL5zcEni398qZGUU/exec'; 
-let currentUser = null;
 
-// =====================================
-// ระบบฉลาด: ค้นหาเดือนปัจจุบัน และตั้งค่า Default ให้เป็น "เดือนถัดไป" อัตโนมัติ
-// =====================================
+let currentUser = null;
 let today = new Date();
-today.setMonth(today.getMonth() + 1); // ขยับไป 1 เดือนข้างหน้า
+today.setMonth(today.getMonth() + 1); 
 let currentYear = today.getFullYear(); 
-let currentMonth = today.getMonth() + 1; // 1-12
+let currentMonth = today.getMonth() + 1; 
 
 let allUsers = [];
 let allShifts = [];
 let blockedDatesList = []; 
 let unavailabilitiesList = [];
 
-// ลำดับกลุ่มงานสำหรับการแสดงผล
 const departmentOrder = [
-    'จิตวิทยา', 
-    'สังคมสงเคราะห์', 
-    'การพยาบาลผู้ป่วยนอก', 
-    'การพยาบาลจิตเวชชุมชนและสารเสพติด', 
-    'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า'
+    'จิตวิทยา', 'สังคมสงเคราะห์', 'การพยาบาลผู้ป่วยนอก', 
+    'การพยาบาลจิตเวชชุมชนและสารเสพติด', 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า'
 ];
 
 // ==========================================
@@ -37,25 +30,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     currentUser = JSON.parse(userData);
     
-    // แสดงชื่อและกลุ่มงานบน Navbar
     document.getElementById('displayUserName').innerText = currentUser.fullName + (currentUser.role === 'Admin' ? ' (Admin)' : '');
     document.getElementById('displayDepartment').innerText = currentUser.department;
 
-    // โชว์ปุ่ม Auto Generate เฉพาะ Admin
     const btnAuto = document.getElementById('btnAutoGenerate');
     if (btnAuto && currentUser.role === 'Admin') btnAuto.style.display = 'inline-block';
 
-    setupMonthSelector();
+    setupMonthSelector(); 
+
+    const selector = document.getElementById('monthSelector');
+    if(selector) {
+        const [y, m] = selector.value.split('-');
+        currentYear = parseInt(y);
+        currentMonth = parseInt(m);
+    }
+
     loadScheduleData(currentYear, currentMonth);
 });
 
-// ดึงข้อมูลทั้งหมดจาก Backend
 async function loadScheduleData(year, month) {
     Swal.fire({ title: 'กำลังโหลดข้อมูล...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
     try {
         const response = await fetch(API_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: 'get_schedule', data: { year, month } }) 
+            method: 'POST', body: JSON.stringify({ action: 'get_schedule', data: { year, month } }) 
         });
         const result = await response.json();
         
@@ -65,41 +62,36 @@ async function loadScheduleData(year, month) {
             blockedDatesList = result.blockedDates || []; 
             unavailabilitiesList = result.unavailabilities || [];
             
-            // วาดหน้าจอทั้ง 3 แท็บ
             renderMyBookingView(year, month);
             renderMasterSchedule(year, month);
             if (document.getElementById('statsBody')) renderStatsTable();
 
             Swal.close();
-        } else { 
-            Swal.fire('ผิดพลาด', result.message, 'error'); 
-        }
-    } catch (error) { 
-        Swal.fire('ข้อผิดพลาดการเชื่อมต่อ', error.message, 'error'); 
-    }
+        } else { Swal.fire('ผิดพลาด', result.message, 'error'); }
+    } catch (error) { Swal.fire('ข้อผิดพลาดการเชื่อมต่อ', error.message, 'error'); }
 }
 
 // ==========================================
 // 3. ลอจิกตรวจสอบสิทธิ์การจอง (Business Logic)
 // ==========================================
 function checkEligibility(user, dayOfWeek) {
-    const isHoliday = (dayOfWeek === 0 || dayOfWeek === 6); // 0=อาทิตย์, 6=เสาร์
+    const isHoliday = (dayOfWeek === 0 || dayOfWeek === 6); 
     const dept = user.department;
     const cond = user.conditions || "";
     let canM1 = false, canM2 = false, canA1 = true, canA2 = true; 
 
-    // กฎระดับกลุ่มงาน
+    // กฎระดับกลุ่มงาน (อัปเดต ECT ให้ขึ้นสาย 1 และสาย 2 ได้)
     if (!isHoliday) {
         if (dayOfWeek === 1 && dept === 'การพยาบาลผู้ป่วยนอก') canM1 = true;
         if (dayOfWeek === 2 && dept === 'จิตวิทยา') canM1 = true;
         if (dayOfWeek === 3 && dept === 'การพยาบาลจิตเวชชุมชนและสารเสพติด') canM1 = true;
-        if (dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') {canM1 = true; canM2 = true; canA1 = true; canA2 = true;} 
+        if (dayOfWeek === 4 && dept === 'การพยาบาลผู้ป่วยพิเศษ/รักษาด้วยไฟฟ้า') { canM1 = true; canM2 = true; } // ปลดล็อกสาย 1
         if (dayOfWeek === 5 && dept === 'สังคมสงเคราะห์') canM1 = true;
     } else {
         canM1 = true; canM2 = true;
     }
 
-    // กฎระดับบุคคล (เงื่อนไขพิเศษ)
+    // กฎระดับบุคคล (ตรวจสอบจากคำในแผ่นงาน Personnel)
     if (cond.includes('งดรับเวรบ่าย')) { canA1 = false; canA2 = false; }
     if (cond.includes('งดรับเวรเช้าวันธรรมดา') && !isHoliday) { canM1 = false; canM2 = false; }
     if (cond.includes('รับเฉพาะเวรเช้าวันธรรมดา')) { canA1 = false; canA2 = false; if (isHoliday) { canM1 = false; canM2 = false; } }
@@ -176,13 +168,9 @@ function renderMyBookingView(year, month) {
     gridContainer.innerHTML = html;
 }
 
-// Modal สำหรับจองเวรรายวัน / แจ้งลา (ของตัวเอง)
 function openDailyBookingModal(dateStr, dayOfWeek) {
     const isBlocked = blockedDatesList.find(b => b.date === dateStr);
-    if (isBlocked) {
-        Swal.fire('งดจัดเวร', `วันที่ ${dateStr} งดจัดเวรเนื่องจาก: ${isBlocked.reason}`, 'info');
-        return;
-    }
+    if (isBlocked) { Swal.fire('งดจัดเวร', `วันที่ ${dateStr} งดจัดเวรเนื่องจาก: ${isBlocked.reason}`, 'info'); return; }
 
     const elig = checkEligibility(currentUser, dayOfWeek);
     const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
@@ -223,12 +211,7 @@ function openDailyBookingModal(dateStr, dayOfWeek) {
         html += `<div class="alert alert-secondary p-2 text-center">ไม่มีกะว่างที่คุณสามารถจองได้ในวันนี้</div>`;
     }
 
-    Swal.fire({
-        title: `วันที่ ${dateStr}`,
-        html: html,
-        showConfirmButton: false,
-        showCloseButton: true
-    });
+    Swal.fire({ title: `วันที่ ${dateStr}`, html: html, showConfirmButton: false, showCloseButton: true });
 }
 
 // ==========================================
@@ -292,7 +275,6 @@ function renderMasterSchedule(year, month) {
                     tdDay.className += ' shift-empty';
                 }
 
-                // สิทธิ์คลิกจัดการตาราง: Admin กดได้ทุกคน, User กดได้เฉพาะแถวตัวเอง
                 if (currentUser.role === 'Admin' || currentUser.uid === user.uid) {
                     tdDay.style.cursor = 'pointer';
                     tdDay.onmouseover = () => tdDay.style.backgroundColor = '#e2e6ea';
@@ -306,7 +288,6 @@ function renderMasterSchedule(year, month) {
     });
 }
 
-// Modal เพิ่ม/ลบเวร/แจ้งลา สำหรับตารางรวม (Admin)
 function manageShiftModal(targetUser, dateStr, dayOfWeek, existingShifts) {
     const elig = checkEligibility(targetUser, dayOfWeek);
     const shiftsToday = allShifts.filter(s => s.date.startsWith(dateStr));
@@ -314,7 +295,6 @@ function manageShiftModal(targetUser, dateStr, dayOfWeek, existingShifts) {
     
     let html = `<div class="text-start">`;
 
-    // ปุ่มแจ้งลา / ยกเลิกการแจ้งลา
     if (isUnavailable) {
         html += `<div class="alert alert-warning text-center fw-bold mb-2 p-2">บุคคลนี้แจ้งไม่สะดวกรับเวรในวันนี้</div>`;
         html += `<button class="btn btn-warning btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${targetUser.uid}', '${dateStr}')">🛑 ยกเลิกสถานะ 'ลา/ไม่สะดวกรับเวร'</button><hr>`;
@@ -349,11 +329,8 @@ function manageShiftModal(targetUser, dateStr, dayOfWeek, existingShifts) {
 
     Swal.fire({
         title: `จัดการเวร: ${targetUser.fullName.split(' ')[0]}`,
-        html: html,
-        showCancelButton: true,
-        showConfirmButton: optionsHTML !== '', 
-        confirmButtonText: 'บันทึกเวรใหม่',
-        cancelButtonText: 'ปิด',
+        html: html, showCancelButton: true, showConfirmButton: optionsHTML !== '', 
+        confirmButtonText: 'บันทึกเวรใหม่', cancelButtonText: 'ปิด',
         preConfirm: () => {
             const selected = document.querySelector('input[name="shiftOption"]:checked');
             if (!selected) { Swal.showValidationMessage('กรุณาเลือกกะที่ต้องการเพิ่ม'); return false; }
@@ -525,49 +502,37 @@ function setupMonthSelector() {
     const selector = document.getElementById('monthSelector');
     if(!selector) return;
     
-    // =====================================
-    // UI: ทำให้ตัวเลือกเดือนเด่นและใหญ่ขึ้น
-    // =====================================
-    selector.className = "form-select form-select-lg fw-bold text-primary shadow-sm";
+    selector.className = "form-select form-select-lg fw-bold text-primary shadow-sm mb-3";
     selector.style.border = "2px solid #FF6600";
     selector.style.fontSize = "1.1rem";
-    
     selector.innerHTML = '';
+    
     const monthsThai = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     
-    // =====================================
-    // Logic: สร้างตัวเลือกล่วงหน้า 12 เดือน (รวมเดือนนี้ด้วย เผื่ออยากกลับมาดู)
-    // =====================================
-    let actualDate = new Date(); // วันที่ของจริง ณ วันที่เปิดเว็บ
+    let actualDate = new Date(); 
     let startYear = actualDate.getFullYear();
-    let startMonth = actualDate.getMonth(); // 0-11
+    let startMonth = actualDate.getMonth(); 
+
+    let defaultYear = startYear;
+    let defaultMonth = startMonth + 2; 
+    if (defaultMonth > 12) { defaultMonth = 1; defaultYear += 1; }
 
     for(let i = 0; i < 12; i++) {
         let tempDate = new Date(startYear, startMonth + i, 1);
-        let m = tempDate.getMonth() + 1; // 1-12
+        let m = tempDate.getMonth() + 1; 
         let y = tempDate.getFullYear();
         
         const option = document.createElement('option');
-        // เก็บทั้งปีและเดือนไว้ใน value เพื่อแก้ปัญหาการเลือกเดือนข้ามปี
         option.value = `${y}-${m}`; 
         
-        // เติมไอคอนและปรับข้อความให้ดูง่าย
-        if (i === 0) {
-            option.innerText = `📅 ${monthsThai[m-1]} ${y + 543} (เดือนนี้)`;
-        } else if (i === 1) {
-            option.innerText = `⭐ ${monthsThai[m-1]} ${y + 543} (เดือนหน้า)`;
-        } else {
-            option.innerText = `📅 ${monthsThai[m-1]} ${y + 543}`;
-        }
+        if (i === 0) option.innerText = `📅 ${monthsThai[m-1]} ${y + 543} (เดือนนี้)`;
+        else if (i === 1) option.innerText = `⭐ ${monthsThai[m-1]} ${y + 543} (เดือนหน้า)`;
+        else option.innerText = `📅 ${monthsThai[m-1]} ${y + 543}`;
         
-        // ให้เลือก (Selected) เดือนที่ตรงกับ currentMonth ที่เราตั้งไว้ตอนแรก
-        if (m === currentMonth && y === currentYear) {
-            option.selected = true;
-        }
+        if (m === defaultMonth && y === defaultYear) option.selected = true;
         selector.appendChild(option);
     }
 
-    // เมื่อเปลี่ยนเดือน ให้ดึงทั้ง Year และ Month ใหม่มารันข้อมูล
     selector.addEventListener('change', (e) => { 
         const [selectedYear, selectedMonth] = e.target.value.split('-');
         currentYear = parseInt(selectedYear);
