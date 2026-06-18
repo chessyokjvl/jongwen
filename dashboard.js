@@ -149,11 +149,15 @@ function renderMyBookingView(year, month) {
             cellContent += `<div class="cal-badge bg-danger text-white mt-1">🚫 งดจัด</div>`;
         } else if (isUnavailable) {
             cellContent += `<div class="cal-badge bg-warning text-dark mt-1 fw-bold">⛔ ลา/ไม่ว่าง</div>`;
-        } else if (myShiftsToday.length > 0) {
-            myShiftsToday.forEach(s => {
-                cellContent += `<div class="cal-badge bg-primary text-white mt-1">✅ ${s.period[0]}${s.line}</div>`;
-            });
         } else {
+            // ส่วนที่ 1: โชว์เวรที่ตัวเองมีอยู่แล้ว
+            if (myShiftsToday.length > 0) {
+                myShiftsToday.forEach(s => {
+                    cellContent += `<div class="cal-badge bg-primary text-white mt-1">✅ ${s.period[0]}${s.line}</div>`;
+                });
+            }
+            
+            // ส่วนที่ 2: โชว์กะที่ยังว่างและจองเพิ่มได้ (ควบคู่กัน)
             const elig = checkEligibility(currentUser, dayOfWeek);
             const hasM1 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '1');
             const hasM2 = shiftsToday.find(s => s.period === 'เช้า' && s.line == '2');
@@ -168,7 +172,7 @@ function renderMyBookingView(year, month) {
 
             if (availableCount > 0) {
                 cellContent += `<div class="cal-badge bg-success text-white mt-1">ว่าง ${availableCount} กะ</div>`;
-            } else {
+            } else if (myShiftsToday.length === 0) {
                 cellContent += `<div class="cal-badge bg-secondary text-white opacity-50 mt-1">เต็ม/ไม่มีสิทธิ์</div>`;
             }
         }
@@ -197,16 +201,28 @@ function openDailyBookingModal(dateStr, dayOfWeek) {
         html += `<button class="btn btn-secondary btn-sm w-100 mb-3 fw-bold shadow-sm" onclick="Swal.close(); toggleUnavail('${currentUser.uid}', '${dateStr}')">⛔ แจ้งไม่สะดวกรับเวรวันนี้</button><hr>`;
     }
 
-    html += `<p class="mb-2 fw-bold text-primary">สิทธิ์การจองเวรของคุณ:</p>`;
+    html += `<p class="mb-2 fw-bold text-primary">เวรของคุณในวันนี้:</p>`;
 
+    // เปลี่ยนระบบยกเลิกเวร ให้แยกปุ่มยกเลิกกะใครกะมัน
     if (myShiftsToday.length > 0) {
         myShiftsToday.forEach(s => {
-            html += `<button class="btn btn-primary btn-sm w-100 mb-2 disabled">✅ คุณมีเวร: ${s.period} สาย ${s.line}</button>`;
+            html += `
+            <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded bg-light">
+                <span class="fw-bold text-primary">✅ ${s.period} สาย ${s.line}</span>
+                <button class="btn btn-outline-danger btn-sm" onclick="Swal.close(); deleteShiftBooking('${s.shiftId}')">🗑️ ยกเลิก</button>
+            </div>`;
         });
-        html += `<button class="btn btn-outline-danger btn-sm w-100 mb-2 mt-2" onclick="Swal.close(); deleteShiftBooking('${myShiftsToday[0].shiftId}')">🗑️ ยกเลิกเวรที่จองไว้</button>`;
-    } else if (!isUnavailable) {
+    } else {
+        html += `<p class="text-muted small">- ยังไม่มีเวร -</p>`;
+    }
+
+    html += `<hr><p class="mb-2 fw-bold text-success">สิทธิ์จองเวรเพิ่มเติม:</p>`;
+
+    // โชว์ปุ่มกะที่ว่างให้จองเสมอ แม้ว่าจะมีเวรในวันนี้แล้วก็ตาม
+    if (!isUnavailable) {
         const renderBtn = (canBook, shiftData, period, line, btnClass) => {
             if (!canBook) return '';
+            // ถ้าเวรนี้โดนจองแล้ว จะขึ้นว่าเต็ม (รวมถึงถ้าตัวเองเป็นคนจองกะนี้ไปแล้วด้วย)
             if (shiftData) return `<button class="btn btn-outline-secondary btn-sm w-100 mb-2 disabled">❌ ${period} สาย ${line} (เต็มแล้ว)</button>`;
             return `<button class="btn ${btnClass} btn-sm w-100 mb-2 fw-bold" onclick="Swal.close(); quickBook('${dateStr}', '${period}', '${line}', ${elig.isHoliday})">👉 จองเวร: ${period} สาย ${line}</button>`;
         };
