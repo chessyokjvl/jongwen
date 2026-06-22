@@ -112,6 +112,13 @@ function checkEligibility(user, dayOfWeek) {
         if (dayOfWeek !== 4) { canM1 = false; canM2 = false; canA1 = false; canA2 = false; }
         if (isHoliday && cond.includes('วันหยุดรับเดือนละ 1 เวรเช้า')) { canM1 = true; canM2 = true; }
     }
+
+    // =========================================================
+    // 🛑 [ชั่วคราว] ระงับการจอง "เวรบ่าย สาย 2" ตั้งแต่ ส.ค. 2569 เป็นต้นไป
+    // หากโทรศัพท์ซ่อมเสร็จแล้ว ให้ลบ หรือใส่ // หน้าโค้ด 3 บรรทัดนี้ได้เลยครับ
+    // =========================================================
+    // if (currentYear > 2026 || (currentYear === 2026 && currentMonth >= 8)) { canA2 = false; }
+    // =========================================================
     
     return { canM1, canM2, canA1, canA2, isHoliday };
 }
